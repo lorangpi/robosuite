@@ -165,11 +165,13 @@ class Hanoi(SingleArmEnv):
         camera_segmentations=None,  # {None, instance, class, element}
         renderer="mujoco",
         renderer_config=None,
+        random_reset = False,
     ):
         # settings for table top
         self.table_full_size = table_full_size
         self.table_friction = table_friction
         self.table_offset = np.array((0, 0, 0.8))
+        self.random_reset = random_reset
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -439,11 +441,15 @@ class Hanoi(SingleArmEnv):
                         z_offset=-0.062,
                     ))
 
+            if not(self.random_reset):
+                place = 0
+            else:
+                place = np.random.randint(0, 3)
             self.placement_initializer1 = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube3,
-                x_range=[self.pegs_xy_pos[0][0]-0.1, self.pegs_xy_pos[0][0]-0.1],
-                y_range=[self.pegs_xy_pos[0][1]-0.05, self.pegs_xy_pos[0][1]-0.05],
+                x_range=[self.pegs_xy_pos[place][0]-0.1, self.pegs_xy_pos[place][0]-0.1],
+                y_range=[self.pegs_xy_pos[place][1]-0.05, self.pegs_xy_pos[place][1]-0.05],
                 rotation=0,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
@@ -507,21 +513,34 @@ class Hanoi(SingleArmEnv):
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
 
+            # Sample from the placement initializer for pegs
+            peg_placements = self.peg_placement_initializer.sample()
+            for obj_pos, obj_quat, obj in peg_placements.values():
+                self.sim.model.body_pos[self.sim.model.body_name2id(obj.root_body)] = obj_pos
+                self.sim.model.body_quat[self.sim.model.body_name2id(obj.root_body)] = obj_quat
+
             # Sample from the placement initializer for cubes
             object1_placement = self.placement_initializer1.sample()
-            object2_placement = self.placement_initializer2.sample(reference=object1_placement["cube3"][0], on_top=True)
-            object3_placement = self.placement_initializer3.sample(reference=object2_placement["cube2"][0], on_top=True)
+            if self.random_reset:
+                # list all objects that cube2 can be placed on (including pegs)
+                list_choice2 = [object1_placement["cube3"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
+                object_2_ontop = list_choice2[np.random.randint(0, 4)]
+                object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
+                # list all objects that cube1 can be placed on (including pegs)
+                list_choice3 = [object1_placement["cube3"][0], object2_placement["cube2"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
+                list_choice3.remove(object_2_ontop)
+                object_3_ontop = list_choice3[np.random.randint(0, 4)]
+                object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
+            else:
+                object2_placement = self.placement_initializer2.sample(reference=object1_placement["cube3"][0], on_top=True)
+                object3_placement = self.placement_initializer3.sample(reference=object2_placement["cube2"][0], on_top=True)
             object_placements = object1_placement
             object_placements.update(object2_placement)
             object_placements.update(object3_placement)
             # Loop through all objects and reset their positions
             for obj_pos, obj_quat, obj in object_placements.values():
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
-            # Sample from the placement initializer for pegs
-            peg_placements = self.peg_placement_initializer.sample()
-            for obj_pos, obj_quat, obj in peg_placements.values():
-                self.sim.model.body_pos[self.sim.model.body_name2id(obj.root_body)] = obj_pos
-                self.sim.model.body_quat[self.sim.model.body_name2id(obj.root_body)] = obj_quat
+
 
 
     def _setup_observables(self):
