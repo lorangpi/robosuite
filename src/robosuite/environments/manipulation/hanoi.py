@@ -181,6 +181,7 @@ class Hanoi(SingleArmEnv):
         self.use_object_obs = use_object_obs
 
         # object placement initializer
+        self.reset_state = None
         self.placement_initializer = placement_initializer
 
         super().__init__(
@@ -396,6 +397,7 @@ class Hanoi(SingleArmEnv):
         pegs = [self.visual_peg1, self.visual_peg2, self.visual_peg3]
         self.objects = cubes + pegs
         self.obj_names = [obj.name for obj in self.objects]
+        self.obj_map = {'cube1':self.cube1, 'cube2':self.cube2,'cube3':self.cube3,}
 
         # Create placement initializer
         if self.placement_initializer is not None:
@@ -474,7 +476,7 @@ class Hanoi(SingleArmEnv):
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-
+        self.object_placements = {"cube1":None, "cube2":None, "cube3":None}
         # task includes arena, robot, and objects of interest
         self.model = ManipulationTask(
             mujoco_arena=mujoco_arena,
@@ -493,6 +495,69 @@ class Hanoi(SingleArmEnv):
         # Additional object references from this env
         self.cube1_body_id = self.sim.model.body_name2id(self.cube1.root_body)
         self.cube2_body_id = self.sim.model.body_name2id(self.cube2.root_body)
+
+    def set_reset_state(self, state):
+        self.reset_state = state
+
+    def reset_positions(self, predicates):
+        """
+        Resets the cube placements given a predicate dictionnary
+        For instance, if on(cube1,cube2) is True in the dict, will reset cube1 on cube2
+        """
+        self.object_placements = self.get_pos("cube3", predicates)
+        self.object_placements.update(self.get_pos("cube2", predicates))
+        self.object_placements.update(self.get_pos("cube1", predicates))
+
+    def get_pos(self, cube, predicates):
+        # Search for cube1 position
+        onto_obj = None
+        peg = None
+        for key in predicates.keys():
+            if "on" in key and cube in key.split(',')[0] and "cube" in key.split(',')[1]:
+                onto_obj = key.split(',')[1][:-1]
+            elif "on" in key and cube in key.split(',')[0] and "peg" in key.split(',')[1]:
+                peg = int(key.split(',')[1][-2])-1
+        if peg != None:
+            print("Resetting {} on top of peg {}".format(cube, peg))
+            placement_initializer = UniformRandomSampler(
+                name="ObjectSampler",
+                mujoco_objects=self.obj_map[cube],
+                x_range=[self.pegs_xy_pos[peg][0]-0.1, self.pegs_xy_pos[peg][0]-0.1],
+                y_range=[self.pegs_xy_pos[peg][1]-0.05, self.pegs_xy_pos[peg][1]-0.05],
+                rotation=0,
+                ensure_object_boundary_in_range=False,
+                ensure_valid_placement=True,
+                reference_pos=self.table_offset,
+                z_offset=0.01,
+            )
+            object_placement = placement_initializer.sample()
+        if onto_obj != None:
+            placement_initializer = UniformRandomSampler(
+                name="ObjectSampler",
+                mujoco_objects=self.obj_map[cube],
+                rotation=0,
+                ensure_object_boundary_in_range=False,
+                ensure_valid_placement=True,
+                reference_pos=self.table_offset,
+                z_offset=0.01,
+            )
+            object_placement = placement_initializer.sample(reference=self.object_placements[onto_obj][onto_obj][0], on_top=True)
+        return object_placement
+
+    def random_reset(self):
+        object1_placement = self.placement_initializer1.sample()
+        # list all objects that cube2 can be placed on (including pegs)
+        list_choice2 = [object1_placement["cube3"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
+        object_2_ontop = list_choice2[np.random.randint(0, 4)]
+        object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
+        # list all objects that cube1 can be placed on (including pegs)
+        list_choice3 = [object1_placement["cube3"][0], object2_placement["cube2"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
+        list_choice3.remove(object_2_ontop)
+        object_3_ontop = list_choice3[np.random.randint(0, 4)]
+        object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
+        self.object_placements = object1_placement
+        self.object_placements.update(object2_placement)
+        self.object_placements.update(object3_placement)
 
     def _reset_internal(self):
         """
@@ -520,28 +585,20 @@ class Hanoi(SingleArmEnv):
                 self.sim.model.body_quat[self.sim.model.body_name2id(obj.root_body)] = obj_quat
 
             # Sample from the placement initializer for cubes
-            object1_placement = self.placement_initializer1.sample()
             if self.random_reset:
-                # list all objects that cube2 can be placed on (including pegs)
-                list_choice2 = [object1_placement["cube3"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-                object_2_ontop = list_choice2[np.random.randint(0, 4)]
-                object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-                # list all objects that cube1 can be placed on (including pegs)
-                list_choice3 = [object1_placement["cube3"][0], object2_placement["cube2"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-                list_choice3.remove(object_2_ontop)
-                object_3_ontop = list_choice3[np.random.randint(0, 4)]
-                object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
+                self.random_reset()
+            elif self.reset_state != None:
+                self.reset_positions(self.reset_state)
             else:
+                object1_placement = self.placement_initializer1.sample()
                 object2_placement = self.placement_initializer2.sample(reference=object1_placement["cube3"][0], on_top=True)
                 object3_placement = self.placement_initializer3.sample(reference=object2_placement["cube2"][0], on_top=True)
-            object_placements = object1_placement
-            object_placements.update(object2_placement)
-            object_placements.update(object3_placement)
+                self.object_placements = object1_placement
+                self.object_placements.update(object2_placement)
+                self.object_placements.update(object3_placement)
             # Loop through all objects and reset their positions
-            for obj_pos, obj_quat, obj in object_placements.values():
+            for obj_pos, obj_quat, obj in self.object_placements.values():
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
-
-
 
     def _setup_observables(self):
         """
