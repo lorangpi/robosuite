@@ -2,7 +2,6 @@ import copy
 import gymnasium as gym
 import robosuite as suite
 import numpy as np
-from stable_baselines3 import SAC
 from detector import Robosuite_Hanoi_Detector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
@@ -31,9 +30,10 @@ class DropWrapper(gym.Wrapper):
         self.task = self.sample_task()
         self.env.reset_state = self.reset_state
         self.obj_mapping = {'cube1': self.cube1_body, 'cube2': self.cube2_body, 'cube3': self.cube3_body, 'peg1': self.peg1_body, 'peg2': self.peg2_body, 'peg3': self.peg3_body}
+        self.goal_mapping = {'cube1': 0, 'cube2': 1, 'cube3': 2, 'peg1': 3, 'peg2': 4, 'peg3': 5}
 
         # set up observation space
-        self.obs_dim = self.env.obs_dim #+ 6 # 6 extra dimensions for the distance to objects/areas
+        self.obs_dim = self.env.obs_dim + 1 # 1 extra dimensions for the object goal
 
         high = np.inf * np.ones(self.obs_dim)
         low = -high
@@ -220,4 +220,5 @@ class DropWrapper(gym.Wrapper):
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
+        obs = np.concatenate((obs, self.goal_mapping[self.place_to_drop]))
         return obs, reward, terminated, truncated, info
