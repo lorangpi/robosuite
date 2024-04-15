@@ -23,14 +23,13 @@ class DropWrapper(gym.Wrapper):
         self.peg1_body = self.env.sim.model.body_name2id('peg1_main')
         self.peg2_body = self.env.sim.model.body_name2id('peg2_main')
         self.peg3_body = self.env.sim.model.body_name2id('peg3_main')
+        self.area_pos = {'peg1': self.pegs_xy_center[0], 'peg2': self.pegs_xy_center[1], 'peg3': self.pegs_xy_center[2]}
 
         # Set reset state info:
         #self.reset_state = {'on(cube1,peg1)': True, 'on(cube2,peg3)': True, 'on(cube3,peg2)': True}
         self.reset_state = self.sample_reset_state()
-        self.task = self.sample_task(self.reset_state)
+        self.task = self.sample_task()
         self.env.reset_state = self.reset_state
-        self.obj_to_pick = "cube1"
-        self.place_to_drop = "cube3"
         self.obj_mapping = {'cube1': self.cube1_body, 'cube2': self.cube2_body, 'cube3': self.cube3_body, 'peg1': self.peg1_body, 'peg2': self.peg2_body, 'peg3': self.peg3_body}
 
         # set up observation space
@@ -43,7 +42,7 @@ class DropWrapper(gym.Wrapper):
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
         reset_state.update({f"on({cube},{drop_off})":True})
-        locations.drop(drop_off)
+        locations.remove(drop_off)
         locations.append(cube)
         return reset_state, locations
 
@@ -59,25 +58,26 @@ class DropWrapper(gym.Wrapper):
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         valid_picks = []
         cubes = [3, 2, 1]
-        pegs = [3, 2, 1]
+        pegs = [4, 5, 6]
         for cube in cubes:
             if state[f"clear(cube{cube})"]:
                 valid_picks.append(cube)
-        valid_drops = copy(valid_picks)
+        valid_drops = copy.copy(valid_picks)
         for peg in pegs:
-            if state[f"clear(peg{peg})"]:
+            if state[f"clear(peg{peg-3})"]:
                 valid_drops.append(peg)
         return valid_picks, valid_drops
     
-    def sample_task(self, reset_state):
+    def sample_task(self):
         # Sample a random task
         valid_task = False
-        valid_picks, valid_drops = self.search_valid_picks()
+        valid_picks, valid_drops = self.search_valid_picks_drops()
+
         while not valid_task:
             # Sample a random task
             cube_to_pick = np.random.choice(valid_picks)
-            valid_drops_copy = copy(valid_drops)
-            valid_drops_copy.drop(cube_to_pick)
+            valid_drops_copy = copy.copy(valid_drops)
+            valid_drops_copy.remove(cube_to_pick)
             place_to_drop = np.random.choice(valid_drops_copy)
             if cube_to_pick >= place_to_drop:
                 continue
@@ -194,7 +194,7 @@ class DropWrapper(gym.Wrapper):
     def reset(self, seed=None):
         # Reset the environment for the drop trask
         self.reset_state = self.sample_reset_state()
-        self.task = self.sample_task(self.reset_state)
+        self.task = self.sample_task()
         self.env.reset_state = self.reset_state
         print("The reset state is: ", self.reset_state)
         success = False
