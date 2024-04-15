@@ -1,3 +1,4 @@
+import copy
 import gymnasium as gym
 import robosuite as suite
 import numpy as np
@@ -24,7 +25,9 @@ class DropWrapper(gym.Wrapper):
         self.peg3_body = self.env.sim.model.body_name2id('peg3_main')
 
         # Set reset state info:
-        self.reset_state = {'on(cube1,peg1)': True, 'on(cube2,peg3)': True, 'on(cube3,peg2)': True}
+        #self.reset_state = {'on(cube1,peg1)': True, 'on(cube2,peg3)': True, 'on(cube3,peg2)': True}
+        self.reset_state = self.sample_reset_state()
+        self.task = self.sample_task(self.reset_state)
         self.env.reset_state = self.reset_state
         self.obj_to_pick = "cube1"
         self.place_to_drop = "cube3"
@@ -37,13 +40,68 @@ class DropWrapper(gym.Wrapper):
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
 
+    def search_free_space(self, cube, locations, reset_state):
+        drop_off = np.random.choice(locations)
+        reset_state.update({f"on({cube},{drop_off})":True})
+        locations.drop(drop_off)
+        locations.append(cube)
+        return reset_state, locations
+
+    def sample_reset_state(self):
+        reset_state = {}
+        locations = ["peg1", "peg2", "peg3"]
+        cubes = ["cube3", "cube2", "cube1"]
+        for cube in cubes:
+            reset_state, locations = self.search_free_space(cube, locations=locations, reset_state=reset_state)
+        return reset_state
+
+    def search_valid_picks_drops(self):
+        state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        valid_picks = []
+        cubes = [3, 2, 1]
+        pegs = [3, 2, 1]
+        for cube in cubes:
+            if state[f"clear(cube{cube})"]:
+                valid_picks.append(cube)
+        valid_drops = copy(valid_picks)
+        for peg in pegs:
+            if state[f"clear(peg{peg})"]:
+                valid_drops.append(peg)
+        return valid_picks, valid_drops
+    
+    def sample_task(self, reset_state):
+        # Sample a random task
+        valid_task = False
+        valid_picks, valid_drops = self.search_valid_picks()
+        while not valid_task:
+            # Sample a random task
+            cube_to_pick = np.random.choice(valid_picks)
+            valid_drops_copy = copy(valid_drops)
+            valid_drops_copy.drop(cube_to_pick)
+            place_to_drop = np.random.choice(valid_drops_copy)
+            if cube_to_pick >= place_to_drop:
+                continue
+            if place_to_drop < 4:
+                place_to_drop = 'cube{}'.format(place_to_drop)
+            else:
+                place_to_drop = 'peg{}'.format(place_to_drop - 3)
+            cube_to_pick = 'cube{}'.format(cube_to_pick)
+            state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+            if state['on({},{})'.format(cube_to_pick, place_to_drop)]:
+                continue
+            if state['clear({})'.format(cube_to_pick)] and state['clear({})'.format(place_to_drop)]:
+                valid_task = True
+        # Set the task
+        self.obj_to_pick = cube_to_pick
+        self.place_to_drop = place_to_drop
+        print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
+        return f"on({cube_to_pick},{place_to_drop})"
+
     def drop_reset(self):
         """
         Resets the environment to a state where the gripper is holding the object on top of the drop-off location
         """
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-        self.state_memory = state
-
         self.reset_step_count = 0
         #print("Moving up...")
         for _ in range(5):
@@ -135,7 +193,10 @@ class DropWrapper(gym.Wrapper):
 
     def reset(self, seed=None):
         # Reset the environment for the drop trask
-        self.env.set_reset_state(self.reset_state)
+        self.reset_state = self.sample_reset_state()
+        self.task = self.sample_task(self.reset_state)
+        self.env.reset_state = self.reset_state
+        print("The reset state is: ", self.reset_state)
         success = False
         while not success:
             try:

@@ -544,7 +544,7 @@ class Hanoi(SingleArmEnv):
             object_placement = placement_initializer.sample(reference=self.object_placements[onto_obj][onto_obj][0], on_top=True)
         return object_placement
 
-    def random_reset(self):
+    def random_reset_f(self):
         object1_placement = self.placement_initializer1.sample()
         # list all objects that cube2 can be placed on (including pegs)
         list_choice2 = [object1_placement["cube3"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
@@ -586,7 +586,7 @@ class Hanoi(SingleArmEnv):
 
             # Sample from the placement initializer for cubes
             if self.random_reset:
-                self.random_reset()
+                self.random_reset_f()
             elif self.reset_state != None:
                 self.reset_positions(self.reset_state)
             else:
