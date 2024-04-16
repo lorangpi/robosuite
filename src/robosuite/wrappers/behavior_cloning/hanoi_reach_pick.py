@@ -112,7 +112,7 @@ class ReachPickWrapper(gym.Wrapper):
                 info = {}
 
         self.sim.forward()
-        obs = np.concatenate((obs, self.goal_mapping[self.obj_to_pick]))
+        obs = np.concatenate((obs, [self.goal_mapping[self.obj_to_pick]]))
         return obs, info
 
     def step(self, action):
@@ -126,5 +126,5 @@ class ReachPickWrapper(gym.Wrapper):
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
-        obs = np.concatenate((obs, self.goal_mapping[self.obj_to_pick]))
+        obs = np.concatenate((obs, [self.goal_mapping[self.obj_to_pick]]))
         return obs, reward, terminated, truncated, info
