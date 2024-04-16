@@ -112,6 +112,7 @@ class ReachPickWrapper(gym.Wrapper):
                 info = {}
 
         self.sim.forward()
+        obs = np.concatenate((obs, self.goal_mapping[self.obj_to_pick]))
         return obs, info
 
     def step(self, action):

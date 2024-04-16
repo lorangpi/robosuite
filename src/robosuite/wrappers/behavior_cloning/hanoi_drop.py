@@ -207,6 +207,7 @@ class DropWrapper(gym.Wrapper):
             success, obs = self.drop_reset()
 
         self.sim.forward()
+        obs = np.concatenate((obs, self.goal_mapping[self.obj_to_pick]))
         return obs, info
     
     def step(self, action):
