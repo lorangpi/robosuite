@@ -93,7 +93,7 @@ class PickWrapper(gym.Wrapper):
         # Set the task
         self.obj_to_pick = cube_to_pick
         self.place_to_drop = place_to_drop
-        print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
+        #print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
         return f"on({cube_to_pick},{place_to_drop})"
 
     def pick_reset(self):
@@ -131,7 +131,7 @@ class PickWrapper(gym.Wrapper):
         self.reset_state = self.sample_reset_state()
         self.task = self.sample_task()
         self.env.reset_state = self.reset_state
-        print("The reset state is: ", self.reset_state)
+        #print("The reset state is: ", self.reset_state)
         success = False
         while not success:
             try:
@@ -157,4 +157,5 @@ class PickWrapper(gym.Wrapper):
         truncated = truncated or self.env.done
         terminated = terminated or success
         obs = np.concatenate((obs, [self.goal_mapping[self.obj_to_pick]]))
+        reward = 1 if success else 0
         return obs, reward, terminated, truncated, info

@@ -127,4 +127,5 @@ class ReachPickWrapper(gym.Wrapper):
         truncated = truncated or self.env.done
         terminated = terminated or success
         obs = np.concatenate((obs, [self.goal_mapping[self.obj_to_pick]]))
+        reward = 1 if success else 0
         return obs, reward, terminated, truncated, info

@@ -222,4 +222,5 @@ class DropWrapper(gym.Wrapper):
         truncated = truncated or self.env.done
         terminated = terminated or success
         obs = np.concatenate((obs, [self.goal_mapping[self.place_to_drop]]))
+        reward = 1 if success else 0
         return obs, reward, terminated, truncated, info
