@@ -7,7 +7,7 @@ from detector import Robosuite_Hanoi_Detector
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
 class PickWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[]):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -15,6 +15,8 @@ class PickWrapper(gym.Wrapper):
         self.render_init = render_init
         self.detector = Robosuite_Hanoi_Detector(self)
         self.nulified_action_indexes = nulified_action_indexes
+        self.horizon = horizon
+        self.step_count = 1
 
         # Define needed variables
         self.cube1_body = self.env.sim.model.body_name2id('cube1_main')
@@ -151,6 +153,7 @@ class PickWrapper(gym.Wrapper):
         return True
 
     def reset(self, seed=None):
+        self.step_count = 1
         reset = False
         while not reset:
             trials = 0
@@ -193,10 +196,13 @@ class PickWrapper(gym.Wrapper):
         except:
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
-        success = state[f"picked_up({self.obj_to_pick})"]
+        success = state[f"grasped({self.obj_to_pick})"]
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
         obs = np.concatenate((obs, [self.goal_mapping[self.obj_to_pick]]))
         reward = 1 if success else 0
+        self.step_count += 1
+        if self.step_count > self.horizon:
+            terminated = True
         return obs, reward, terminated, truncated, info
