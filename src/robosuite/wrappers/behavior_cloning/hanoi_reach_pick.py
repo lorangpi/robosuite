@@ -32,7 +32,7 @@ class ReachPickWrapper(gym.Wrapper):
         self.goal_mapping = {'cube1': 0, 'cube2': 1, 'cube3': 2, 'peg1': 3, 'peg2': 4, 'peg3': 5}
 
         # set up observation space
-        self.obs_dim = self.env.obs_dim + 1 # 1 extra dimensions for the object goal
+        self.obs_dim = self.env.obs_dim + 3 # 1 extra dimensions for the object goal
 
         high = np.inf * np.ones(self.obs_dim)
         low = -high
@@ -112,7 +112,7 @@ class ReachPickWrapper(gym.Wrapper):
                 info = {}
 
         self.sim.forward()
-        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.goal_mapping[self.obj_to_pick]]))
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
         return obs, info
 
     def step(self, action):
@@ -126,6 +126,6 @@ class ReachPickWrapper(gym.Wrapper):
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
-        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.goal_mapping[self.obj_to_pick]]))
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
         reward = 1 if success else 0
         return obs, reward, terminated, truncated, info
