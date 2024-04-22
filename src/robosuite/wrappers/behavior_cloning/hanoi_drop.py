@@ -207,7 +207,7 @@ class DropWrapper(gym.Wrapper):
             success, obs = self.drop_reset()
 
         self.sim.forward()
-        obs = np.concatenate((obs, [self.goal_mapping[self.place_to_drop]]))
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.goal_mapping[self.place_to_drop]]))
         return obs, info
     
     def step(self, action):
@@ -221,6 +221,6 @@ class DropWrapper(gym.Wrapper):
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
-        obs = np.concatenate((obs, [self.goal_mapping[self.place_to_drop]]))
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.goal_mapping[self.place_to_drop]]))
         reward = 1 if success else 0
         return obs, reward, terminated, truncated, info
