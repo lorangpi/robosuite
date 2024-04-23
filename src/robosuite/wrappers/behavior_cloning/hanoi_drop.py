@@ -7,13 +7,16 @@ from detector import Robosuite_Hanoi_Detector
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
 class DropWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
         # Run super method
         super().__init__(env=env)
         self.env = env
         self.use_gripper = True
         self.render_init = render_init
         self.detector = Robosuite_Hanoi_Detector(self)
+        self.nulified_action_indexes = nulified_action_indexes
+        self.horizon = horizon
+        self.step_count = 1
 
         # Define needed variables
         self.cube1_body = self.env.sim.model.body_name2id('cube1_main')
@@ -38,6 +41,7 @@ class DropWrapper(gym.Wrapper):
         high = np.inf * np.ones(self.obs_dim)
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
+        self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
@@ -191,26 +195,63 @@ class DropWrapper(gym.Wrapper):
 
         return True, obs
 
+    def valid_state(self):
+        state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        state = {k: state[k] for k in state if 'on' in k}
+        # Filter only the values that are True
+        state = {key: value for key, value in state.items() if value}
+        # if state has not 3 keys, return None
+        if len(state) != 3:
+            return False
+        # Check if cubes have fallen from other subes, i.e., check if two or more cubes are on the same peg
+        pegs = []
+        for relation, value in state.items():
+            _, peg = relation.split('(')[1].split(',')
+            pegs.append(peg)
+        if len(pegs) != len(set(pegs)):
+            #print("Two or more cubes are on the same peg")
+            return False
+        #print(state)
+        return True
+
     def reset(self, seed=None):
         # Reset the environment for the drop trask
-        self.reset_state = self.sample_reset_state()
-        self.task = self.sample_task()
-        self.env.reset_state = self.reset_state
-        print("The reset state is: ", self.reset_state)
-        success = False
-        while not success:
-            try:
-                obs, info = self.env.reset(seed=seed)
-            except:
-                obs = self.env.reset(seed=seed)
-                info = {}
-            success, obs = self.drop_reset()
+        self.step_count = 1
+        reset = False
+        while not reset:
+            trials = 0
+            self.reset_state = self.sample_reset_state()
+            self.task = self.sample_task()
+            self.env.reset_state = self.reset_state
+            success = False
+            while not success:
+                valid_state = False
+                while not valid_state:
+                    #print("Trying to reset the environment...")
+                    try:
+                        obs, info = self.env.reset()
+                    except:
+                        obs = self.env.reset()
+                        info = {}
+                    valid_state = self.valid_state()
+                    trials += 1
+                    if trials > 3:
+                        break   
+                success, obs = self.drop_reset()
+                reset = success
+                if trials > 3:
+                    break   
 
         self.sim.forward()
+        # replace the goal object id with its array of x, y, z location
         obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
         return obs, info
     
     def step(self, action):
+        # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
+        if self.nulified_action_indexes:
+            for index in self.nulified_action_indexes:
+                action = np.insert(action, index, 0)
         truncated = False
         try:
             obs, reward, terminated, truncated, info = self.env.step(action)
@@ -223,4 +264,7 @@ class DropWrapper(gym.Wrapper):
         terminated = terminated or success
         obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
         reward = 1 if success else 0
+        self.step_count += 1
+        if self.step_count > self.horizon:
+            terminated = True
         return obs, reward, terminated, truncated, info
