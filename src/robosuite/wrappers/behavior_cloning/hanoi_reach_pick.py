@@ -101,6 +101,36 @@ class ReachPickWrapper(gym.Wrapper):
         print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
         return f"on({cube_to_pick},{place_to_drop})"
 
+    def reach_pick_reset(self):
+        """
+        Resets the environment to a state where the gripper is holding the object on top of the drop-off location
+        """
+        state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        self.state_memory = state
+
+        self.reset_step_count = 0
+        #print("Moving up...")
+        for _ in range(5):
+            obs,_,_,_,_ = self.env.step([0,0,1,0])
+            self.env.render() if self.render_init else None
+
+        #print("Moving gripper over object...")
+        while not state['over(gripper,{})'.format(self.place_to_drop)]:
+            gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body])
+            object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]])
+            dist_xy_plan = object_pos[:2] - gripper_pos[:2]
+            action = 5*np.concatenate([dist_xy_plan, [0, 0]])
+            obs,_,_,_,_ = self.env.step(action)
+            self.env.render() if self.render_init else None
+            state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+            self.reset_step_count += 1
+            if self.reset_step_count > 500:
+                return False, obs
+        self.reset_step_count = 0
+        self.env.time_step = 0
+
+        return True, obs
+
     def valid_state(self):
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         state = {k: state[k] for k in state if 'on' in k}
@@ -143,7 +173,11 @@ class ReachPickWrapper(gym.Wrapper):
                     trials += 1
                     if trials > 3:
                         break   
-                success = True
+                # 3 times out of 4, the env is reset to another location
+                if np.random.rand() < 0.25:
+                    success = True
+                else:
+                    success, obs = self.reach_pick_reset()
                 reset = success
                 if trials > 3:
                     break   
