@@ -391,7 +391,7 @@ class Hanoi(SingleArmEnv):
         self.pegs_xy_pos = [[0.1, -0.13], [0.1, 0.07], [0.1, 0.27]]
         # Set pegs to be centered at xy pos (-0.1 x-axis, -0.05 y-axis shifted from the pegs_xy_pos)
         self.pegs_xy_center = [[0, -0.18, 0.8], [0, 0.02, 0.8], [0, 0.22, 0.8]]
-        self.peg_radius = 0.02
+        self.peg_radius = 0.0
         
         cubes = [self.cube1, self.cube2, self.cube3]
         pegs = [self.visual_peg1, self.visual_peg2, self.visual_peg3]

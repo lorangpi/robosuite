@@ -33,6 +33,7 @@ class ReachPickWrapper(gym.Wrapper):
         self.env.reset_state = self.reset_state
         self.obj_mapping = {'cube1': self.cube1_body, 'cube2': self.cube2_body, 'cube3': self.cube3_body, 'peg1': self.peg1_body, 'peg2': self.peg2_body, 'peg3': self.peg3_body}
         self.goal_mapping = {'cube1': 0, 'cube2': 1, 'cube3': 2, 'peg1': 3, 'peg2': 4, 'peg3': 5}
+        self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
         self.obs_dim = self.env.obs_dim + 3 # 1 extra dimensions for the object goal
