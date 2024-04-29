@@ -110,9 +110,10 @@ class ReachPickWrapper(gym.Wrapper):
         self.state_memory = state
 
         self.reset_step_count = 0
-        #print("Moving up...") randomly 0 to 5 steps
-        for _ in range(np.random.randint(0, 5)):
-            obs,_,_,_,_ = self.env.step([0,0,1,0])
+        #print("Moving up...") randomly 0 to 3 steps
+        direction = np.random.choice([-1, 1])
+        for k in range(np.random.randint(0, 3)):
+            obs,_,_,_,_ = self.env.step([0,0,direction*1,0])
             self.env.render() if self.render_init else None
 
         #print("Moving gripper over object...")
