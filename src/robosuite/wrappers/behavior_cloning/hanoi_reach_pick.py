@@ -99,7 +99,7 @@ class ReachPickWrapper(gym.Wrapper):
         # Set the task
         self.obj_to_pick = cube_to_pick
         self.place_to_drop = place_to_drop
-        print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
+        #print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
         return f"on({cube_to_pick},{place_to_drop})"
 
     def reach_pick_reset(self):
@@ -110,8 +110,8 @@ class ReachPickWrapper(gym.Wrapper):
         self.state_memory = state
 
         self.reset_step_count = 0
-        #print("Moving up...")
-        for _ in range(5):
+        #print("Moving up...") randomly 0 to 5 steps
+        for _ in range(np.random.randint(0, 5)):
             obs,_,_,_,_ = self.env.step([0,0,1,0])
             self.env.render() if self.render_init else None
 

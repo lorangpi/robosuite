@@ -98,7 +98,7 @@ class ReachDropWrapper(gym.Wrapper):
         # Set the task
         self.obj_to_pick = cube_to_pick
         self.place_to_drop = place_to_drop
-        print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
+        #print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
         return f"on({cube_to_pick},{place_to_drop})"
 
     def reach_drop_reset(self):

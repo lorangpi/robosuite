@@ -199,14 +199,13 @@ class PickWrapper(gym.Wrapper):
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
         # test if self.obj_to_pick (and only self.obj_to_pick) is grasped
-        state = {k: state[k] for k in state if 'grasped' in k}
-        success = False
-        for key, value in state.items():
-            if key == f"grasped({self.obj_to_pick})" and value:
-                success = True
-            elif key != f"grasped({self.obj_to_pick})" and value:
-                success = False
-                break
+        state = {k: state[k] for k in state.keys() if 'grasped' in k and state[k]}
+        try:
+            success = len(state.keys()) == 1 and state[f'grasped({self.obj_to_pick})']
+        except KeyError:
+            success = False
+        if success:
+            print(state)
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
