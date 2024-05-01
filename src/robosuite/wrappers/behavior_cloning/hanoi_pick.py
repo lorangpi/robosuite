@@ -106,7 +106,7 @@ class PickWrapper(gym.Wrapper):
 
     def pick_reset(self):
         """
-        Resets the environment to a state where the gripper is holding the object on top of the drop-off location
+        Resets the environment to a state where the gripper is above the object to be picked
         """
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         self.state_memory = state
