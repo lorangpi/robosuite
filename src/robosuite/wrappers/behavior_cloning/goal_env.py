@@ -20,10 +20,10 @@ class GoalEnvWrapper(gym.Wrapper):
         return {'observation': obs, 'achieved_goal': achieved_goal, 'desired_goal': desired_goal}, info
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, terminated, truncated, info = self.env.step(action)
         achieved_goal = self.env.sim.data.body_xpos[self.gripper_body][:3]
         desired_goal = self.env.goal
-        return {'observation': obs, 'achieved_goal': achieved_goal, 'desired_goal': desired_goal}, reward, done, info
+        return {'observation': obs, 'achieved_goal': achieved_goal, 'desired_goal': desired_goal}, reward, terminated, truncated, info
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """Compute the step reward. This externalizes the reward function and makes
