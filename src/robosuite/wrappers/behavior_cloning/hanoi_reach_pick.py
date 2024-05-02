@@ -43,7 +43,6 @@ class ReachPickWrapper(gym.Wrapper):
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
         self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
 
-
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
         reset_state.update({f"on({cube},{drop_off})":True})
@@ -185,7 +184,7 @@ class ReachPickWrapper(gym.Wrapper):
                     break   
 
         self.sim.forward()
-        # replace the goal object id with its array of x, y, z location
+        self.goal = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
         obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
         return obs, info
 

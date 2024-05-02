@@ -245,6 +245,7 @@ class DropWrapper(gym.Wrapper):
 
         self.sim.forward()
         # replace the goal object id with its array of x, y, z location
+        self.goal = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]
         obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
         return obs, info
     
