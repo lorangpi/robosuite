@@ -103,9 +103,11 @@ class PoliciesResetWrapper(gym.Wrapper):
         #print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
         return f"on({cube_to_pick},{place_to_drop})"
 
-    def reset_using_action_policies(self):
-        """
-        Resets the environment by executing the policies in `self.prev_action_policies` in sequence. Each policy corresponds to a high level action that needs to be completed.
+    def reset_using_action_policies(self, obs):
+        """Resets the environment by executing the policies in `self.prev_action_policies` in sequence. Each policy corresponds to a high level action that needs to be completed.
+
+        Args:
+            obs (ObsType): an observation of the initial state
         """
         def get_action_step_goals():
             """Finds the symbolic goal and the (x, y, z) position
@@ -132,7 +134,7 @@ class PoliciesResetWrapper(gym.Wrapper):
             
         for prev_action_policy in self.prev_action_policies:
             goal, symgoal = get_action_step_goals()
-            obs, success = prev_action_policy.execute(self.env, obs, goal, symgoal, render=False)
+            obs, success = prev_action_policy.execute(self.env.env, obs, goal, symgoal, render=False)
             
             if not success or not self.valid_state():
                 return False, obs
@@ -172,16 +174,23 @@ class PoliciesResetWrapper(gym.Wrapper):
                 valid_state = False
                 while not valid_state:
                     #print("Trying to reset the environment...")
-                    try:
-                        obs, info = self.env.reset()
-                    except:
-                        obs = self.env.reset()
-                        info = {}
+                    if len(self.prev_action_policies) == 0: # if no policies for previous actions, just use this current action's reset function, which is wrapped by the current PoliciesResetWrapper
+                        try:
+                            obs, info = self.env.reset()
+                        except:
+                            obs = self.env.reset()
+                            info = {}
+                    else: # otherwise we need to call the reset function of the original env without any wrappers
+                        try:
+                            obs, info = self.env.env.reset()
+                        except:
+                            obs = self.env.env.reset()
+                            info = {}
                     valid_state = self.valid_state()
                     trials += 1
                     if trials > 3:
                         break   
-                success, obs = self.reset_using_action_policies()
+                success, obs = self.reset_using_action_policies(obs=obs)
                 reset = success
                 if trials > 3:
                     break   
