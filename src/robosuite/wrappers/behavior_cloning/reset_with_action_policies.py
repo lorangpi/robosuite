@@ -34,6 +34,7 @@ class PoliciesResetWrapper(gym.Wrapper):
         self.task = self.sample_task()
         self.env.reset_state = self.reset_state
         self.obj_name2body_mapping = {'cube1': self.cube1_body, 'cube2': self.cube2_body, 'cube3': self.cube3_body, 'peg1': self.peg1_body, 'peg2': self.peg2_body, 'peg3': self.peg3_body}
+        
         self.goal_obj_name2number_mapping = {'cube1': 0, 'cube2': 1, 'cube3': 2, 'peg1': 3, 'peg2': 4, 'peg3': 5}
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
@@ -118,17 +119,17 @@ class PoliciesResetWrapper(gym.Wrapper):
             """
             if 'Pick' in prev_action_policy.id:
                 goal = self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.obj_to_pick]][:3]
-                symgoal = self.obj_name2body_mapping[self.obj_to_pick]
+                symgoal = self.obj_to_pick
             elif 'Drop' in prev_action_policy.id:
                 if 'peg' in self.place_to_drop:
-                    drop_loc = self.area_pos[self.obj_name2body_mapping[self.place_to_drop]]
+                    drop_loc = self.place_to_drop
                 else:
                     drop_loc = self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.place_to_drop]][:3]
                 goal = drop_loc
                 if 'Reach' in prev_action_policy.id:
-                    symgoal = self.obj_name2body_mapping[self.place_to_drop]
+                    symgoal = self.place_to_drop
                 else:
-                    symgoal = (self.obj_name2body_mapping[self.obj_to_pick],self.obj_name2body_mapping[self.place_to_drop])
+                    symgoal = (self.obj_to_pick,self.place_to_drop)
             return goal, symgoal
             
             
