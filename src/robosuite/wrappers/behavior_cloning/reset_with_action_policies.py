@@ -112,13 +112,13 @@ class PoliciesResetWrapper(gym.Wrapper):
             goal for the current action step
             Returns:
                 goal: the location of the object to be picked up or the drop location
-                symgoal: name of the object to be picked up or the drop location 
+                symgoal: name of the object to be picked up or the name of the drop location 
             """
             if 'Pick' in prev_action_policy.id:
                 goal = self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.obj_to_pick]][:3]
                 symgoal = self.obj_name2body_mapping[self.obj_to_pick]
             elif 'Drop' in prev_action_policy.id:
-                if 'peg' in self.obj_name2body_mapping[self.obj_to_drop]:
+                if 'peg' in self.obj_name2body_mapping[self.place_to_drop]:
                     drop_loc = self.area_pos[self.obj_name2body_mapping[self.place_to_drop]]
                 else:
                     drop_loc = self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.place_to_drop]][:3]
