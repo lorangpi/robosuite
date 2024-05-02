@@ -2,7 +2,7 @@ import copy
 import gymnasium as gym
 import robosuite as suite
 import numpy as np
-from robosuite.src.robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
+from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
