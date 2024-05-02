@@ -122,7 +122,7 @@ class PoliciesResetWrapper(gym.Wrapper):
                 symgoal = self.obj_to_pick
             elif 'Drop' in prev_action_policy.id:
                 if 'peg' in self.place_to_drop:
-                    drop_loc = self.place_to_drop
+                    drop_loc = self.area_pos[self.place_to_drop]
                 else:
                     drop_loc = self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.place_to_drop]][:3]
                 goal = drop_loc
