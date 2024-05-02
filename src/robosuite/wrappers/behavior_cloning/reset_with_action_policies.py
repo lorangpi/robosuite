@@ -129,7 +129,7 @@ class PoliciesResetWrapper(gym.Wrapper):
                     symgoal = (self.obj_name2body_mapping[self.obj_to_pick],self.obj_name2body_mapping[self.place_to_drop])
             return goal, symgoal
             
-
+            
         for prev_action_policy in self.prev_action_policies:
             goal, symgoal = get_action_step_goals()
             obs, success = prev_action_policy.execute(self.env, obs, goal, symgoal, render=False)
