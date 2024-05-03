@@ -134,8 +134,10 @@ class PoliciesResetWrapper(gym.Wrapper):
             
         for prev_action_policy in self.prev_action_policies:
             goal, symgoal = get_action_step_goals()
-            obs, success = prev_action_policy.execute(self.env.env, obs, goal, symgoal, render=False)
-            
+            obs, success = prev_action_policy.execute(self.env.env, obs[:self.env.env.observation_space.shape[0]], goal, symgoal, render=False)
+            if obs.shape != self.observation_space.shape:
+                goal_copy = np.copy(goal)
+                obs = np.concatenate((obs, goal_copy))
             if not success or not self.valid_state():
                 return False, obs
 
