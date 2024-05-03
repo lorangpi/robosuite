@@ -1,4 +1,5 @@
 import copy
+import typing
 import gymnasium as gym
 import robosuite as suite
 import numpy as np
@@ -8,15 +9,14 @@ from PDDL.executor import Executor_RL
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
 class PoliciesResetWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500, prev_action_policies:list=[Executor_RL]):
+    def __init__(self, env, prev_action_policies:typing.List[Executor_RL], render_init=False):
         # Run super method
         super().__init__(env=env)
         self.env = env
         self.use_gripper = True
         self.render_init = render_init
         self.detector = Robosuite_Hanoi_Detector(self)
-        self.nulified_action_indexes = nulified_action_indexes
-        self.horizon = horizon
+
         self.prev_action_policies = prev_action_policies
         self.step_count = 1
 
@@ -39,12 +39,11 @@ class PoliciesResetWrapper(gym.Wrapper):
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
-        self.obs_dim = self.env.obs_dim + 3 # 1 extra dimensions for the object goal
-
+        self.obs_dim = self.env.obs_dim 
         high = np.inf * np.ones(self.obs_dim)
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
-        self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
+        self.action_space = self.env.action_space
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
@@ -197,6 +196,4 @@ class PoliciesResetWrapper(gym.Wrapper):
                     break   
 
         self.sim.forward()
-        # replace the goal object id with its array of x, y, z location
-        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.place_to_drop]][:3]))
         return obs, info
