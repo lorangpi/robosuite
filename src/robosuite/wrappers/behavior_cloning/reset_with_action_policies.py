@@ -170,12 +170,13 @@ class PoliciesResetWrapper(gym.Wrapper):
             trials = 0
             self.reset_state = self.sample_reset_state()
             self.task = self.sample_task()
+            print(f"Reset: trying new task {self.task}")
             self.env.reset_state = self.reset_state
             success = False
             while not success:
                 valid_state = False
                 while not valid_state:
-                    #print("Trying to reset the environment...")
+                    print("Trying to reset the environment...")
                     if len(self.prev_action_policies) == 0: # if no policies for previous actions, just use this current action's reset function, which is wrapped by the current PoliciesResetWrapper
                         try:
                             obs, info = self.env.reset()
