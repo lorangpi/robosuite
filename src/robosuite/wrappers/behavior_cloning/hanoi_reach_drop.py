@@ -194,7 +194,6 @@ class ReachDropWrapper(gym.Wrapper):
         while not reset:
             trials = 0
             self.reset_state = self.sample_reset_state()
-            self.task = self.sample_task()
             self.env.reset_state = self.reset_state
             success = False
             while not success:
@@ -214,6 +213,7 @@ class ReachDropWrapper(gym.Wrapper):
                 reset = success
                 if trials > 3:
                     break   
+        self.task = self.sample_task()
 
         self.sim.forward()
         # replace the goal object id with its array of x, y, z location

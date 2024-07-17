@@ -417,7 +417,7 @@ class Robosuite_Hanoi_Detector:
             if return_distance:
                 return dist_xy
             else:
-                return bool(dist_xy < 0.005)
+                return bool(dist_xy < 0.004)
     
     def at_grab_level(self, gripper, obj, return_distance=False):
         obj_body = self.env.sim.model.body_name2id(self.object_id[obj])
@@ -441,8 +441,9 @@ class Robosuite_Hanoi_Detector:
         dist_xyz = np.linalg.norm(obj1_pos - obj2_pos)
         dist_xy = np.linalg.norm(obj1_pos[:-1] - obj2_pos[:-1])
         dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
-        #return dist_xyz < 0.05 and obj1_pos[2] > obj2_pos[2]#dist_xyz < 0.05 and dist_xy < 0.05 and obj1_pos[2] > obj2_pos[2]
-        return bool(dist_xy < 0.025 and obj1_pos[2] > obj2_pos[2] and dist_z < 0.05)
+        #return bool(dist_xyz < 0.05 and dist_xy < 0.05 and obj1_pos[2] > obj2_pos[2])#dist_xyz < 0.05 and dist_xy < 0.05 and obj1_pos[2] > obj2_pos[2]
+        #return bool(dist_xy < 0.025 and obj1_pos[2] > obj2_pos[2]+0.0001 and dist_z < 0.055)
+        return bool(dist_xy < 0.03 and obj1_pos[2] > obj2_pos[2]+0.00001 and dist_z < 0.055)
     
     def clear(self, obj):
         for other_obj in self.objects:

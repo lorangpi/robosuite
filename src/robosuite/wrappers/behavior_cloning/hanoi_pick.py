@@ -41,8 +41,13 @@ class PickWrapper(gym.Wrapper):
         high = np.inf * np.ones(self.obs_dim)
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
+        low_action = self.env.action_space.low[:-len(nulified_action_indexes)]
+        high_action = self.env.action_space.high[:-len(nulified_action_indexes)]
+        # Transform low and high action space to numpy (they're torch sometimes)
+        #low_action = np.array(low_action)
+        #high_action = np.array(high_action)
         # Reduce the action space by the length of the nulified indexes (take the range low high of the action space from the env.action_space)
-        self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
+        self.action_space = gym.spaces.Box(low=low_action, high=high_action, dtype=np.float64)
         #print("Action space: ", self.action_space)
         #print("Action sample: ", self.action_space.sample())
 
@@ -160,7 +165,6 @@ class PickWrapper(gym.Wrapper):
             trials = 0
             # Reset the environment for the pick task
             self.reset_state = self.sample_reset_state()
-            self.task = self.sample_task()
             self.env.reset_state = self.reset_state
             success = False
             while not success:
@@ -180,7 +184,7 @@ class PickWrapper(gym.Wrapper):
                 reset = success
                 if trials > 3:
                     break   
-
+        self.task = self.sample_task()
         self.sim.forward()
         # replace the goal object id with its array of x, y, z location
         self.goal = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
@@ -209,7 +213,7 @@ class PickWrapper(gym.Wrapper):
             print(state)
         info['is_sucess'] = success
         truncated = truncated or self.env.done
-        terminated = terminated or success
+        terminated = terminated or success or self.env.done
         obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
         reward = 1 if success else 0
         self.step_count += 1

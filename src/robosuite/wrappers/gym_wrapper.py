@@ -100,6 +100,15 @@ class GymWrapper(Wrapper, GoalEnv):
         ob_dict = self.env.reset()
         return self._flatten_obs(ob_dict)
 
+    def seed(self, seed=None):
+        """
+        Extends env seed method to reset seed of environment
+
+        Args:
+            seed (int): seed to reset the environment with
+        """
+        np.random.seed(seed)
+
     def step(self, action):
         """
         Extends vanilla step() function call to return flattened observation instead of normal OrderedDict.

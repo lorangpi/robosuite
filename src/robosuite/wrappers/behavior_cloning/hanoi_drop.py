@@ -222,7 +222,6 @@ class DropWrapper(gym.Wrapper):
         while not reset:
             trials = 0
             self.reset_state = self.sample_reset_state()
-            self.task = self.sample_task()
             self.env.reset_state = self.reset_state
             success = False
             while not success:
@@ -242,6 +241,7 @@ class DropWrapper(gym.Wrapper):
                 reset = success
                 if trials > 3:
                     break   
+        self.task = self.sample_task()
 
         self.sim.forward()
         # replace the goal object id with its array of x, y, z location
@@ -260,7 +260,7 @@ class DropWrapper(gym.Wrapper):
         except:
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
-        success = state[f"on({self.obj_to_pick},{self.place_to_drop})"]
+        success = state[f"on({self.obj_to_pick},{self.place_to_drop})"] and not(state[f"grasped({self.obj_to_pick})"])
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
