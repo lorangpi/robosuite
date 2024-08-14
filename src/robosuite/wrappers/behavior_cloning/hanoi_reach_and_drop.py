@@ -6,7 +6,7 @@ from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detecto
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
-class PickPlaceWrapper(gym.Wrapper):
+class ReachAndPlaceWrapper(gym.Wrapper):
     def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
         # Run super method
         super().__init__(env=env)
@@ -104,7 +104,7 @@ class PickPlaceWrapper(gym.Wrapper):
         #print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
         return f"on({cube_to_pick},{place_to_drop})"
 
-    def reach_pick_reset(self):
+    def reach_drop_reset(self):
         """
         Resets the environment to a state where the gripper is holding the object on top of the drop-off location
         """
@@ -112,6 +112,7 @@ class PickPlaceWrapper(gym.Wrapper):
         self.state_memory = state
 
         self.reset_step_count = 0
+
         # Moving randomly 0 to 50 steps
         for k in range(np.random.randint(1, 50)):
             generate_random_3d_action = np.random.uniform(-0.2, 0.2, 3)
@@ -120,17 +121,54 @@ class PickPlaceWrapper(gym.Wrapper):
             self.env.render() if self.render_init else None
 
         #print("Moving gripper over object...")
-        # while not state['over(gripper,{})'.format(self.place_to_drop)]:
-        #     gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body])
-        #     object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]])
-        #     dist_xy_plan = object_pos[:2] - gripper_pos[:2]
-        #     action = 5*np.concatenate([dist_xy_plan, [0, 0]])
-        #     obs,_,_,_,_ = self.env.step(action)
-        #     self.env.render() if self.render_init else None
-        #     state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-        #     self.reset_step_count += 1
-        #     if self.reset_step_count > 500:
-        #         return False, obs
+        while not state['over(gripper,{})'.format(self.obj_to_pick)]:
+            gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body])
+            object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]])
+            dist_xy_plan = object_pos[:2] - gripper_pos[:2]
+            action = 5*np.concatenate([dist_xy_plan, [0, 0]])
+            obs,_,_,_,_ = self.env.step(action)
+            self.env.render() if self.render_init else None
+            state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+            self.reset_step_count += 1
+            if self.reset_step_count > 500:
+                return False, obs
+        self.reset_step_count = 0
+        self.env.time_step = 0
+
+        #print("Opening gripper...")
+        while not state['open_gripper(gripper)']:
+            obs,_,_,_,_ = self.env.step([0,0,0,-0.1])
+            self.env.render() if self.render_init else None
+            state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+            self.reset_step_count += 1
+            if self.reset_step_count > 100:
+                return False, obs
+        self.reset_step_count = 0
+        self.env.time_step = 0
+
+        #print("Moving down gripper to grab level...")
+        while not state['at_grab_level(gripper,{})'.format(self.obj_to_pick)]:
+            gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body])
+            object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]])
+            dist_z_axis = [object_pos[2] - gripper_pos[2]]
+            action = 5*np.concatenate([[0, 0], dist_z_axis, [0]])
+            obs,_,_,_,_ = self.env.step(action)
+            self.env.render() if self.render_init else None
+            state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+            self.reset_step_count += 1
+            if self.reset_step_count > 400:
+                return False, obs
+        self.reset_step_count = 0
+        self.env.time_step = 0
+
+        #print("Closing gripper...")
+        while not state['grasped({})'.format(self.obj_to_pick)]:
+            obs,_,_,_,_ = self.env.step([0,0,0,0.1])
+            self.env.render() if self.render_init else None
+            state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+            self.reset_step_count += 1
+            if self.reset_step_count > 30:
+                return False, obs
         self.reset_step_count = 0
         self.env.time_step = 0
 
@@ -181,7 +219,7 @@ class PickPlaceWrapper(gym.Wrapper):
                 if np.random.rand() < 0.25:
                     success = True
                 else:
-                    success, obs = self.reach_pick_reset()
+                    success, obs = self.reach_drop_reset()
                 reset = success
                 if trials > 3:
                     break   
@@ -189,7 +227,7 @@ class PickPlaceWrapper(gym.Wrapper):
 
         self.sim.forward()
         self.goal = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
-        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
         return obs, info
 
     def step(self, action):
@@ -209,18 +247,11 @@ class PickPlaceWrapper(gym.Wrapper):
             print("Object successfully placed on the drop-off location", state[f"on({self.obj_to_pick},{self.place_to_drop})"])
         truncated = truncated or self.env.done
         terminated = terminated or success
-        if state[f"on({self.obj_to_pick},{self.place_to_drop})"] or state['grasped({})'.format(self.obj_to_pick)]:
-            obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
-        else:
-            obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
-        if state[f"over(gripper,{self.obj_to_pick})"]:
-            reward = 0.25
-        elif state[f"grasped({self.obj_to_pick})"]:
-            reward = 0.5
-        elif state[f"over(gripper,{self.place_to_drop})"]:
-            reward = 0.75
-        elif success:
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
+        if success:
             reward = 1
+        elif state[f"over(gripper,{self.place_to_drop})"]:
+            reward = 0.5
         else:
             reward = 0
         self.step_count += 1

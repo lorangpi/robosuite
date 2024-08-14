@@ -417,7 +417,7 @@ class Robosuite_Hanoi_Detector:
             if return_distance:
                 return dist_xy
             else:
-                return bool(dist_xy < 0.004)
+                return bool(dist_xy < 0.004)#return bool(dist_xy < 0.004)
     
     def at_grab_level(self, gripper, obj, return_distance=False):
         obj_body = self.env.sim.model.body_name2id(self.object_id[obj])

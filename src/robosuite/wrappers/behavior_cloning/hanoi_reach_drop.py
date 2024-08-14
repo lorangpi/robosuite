@@ -223,7 +223,7 @@ class ReachDropWrapper(gym.Wrapper):
 
     def step(self, action):
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
-        if self.nulified_action_indexes:
+        if self.nulified_action_indexes != []:
             for index in self.nulified_action_indexes:
                 action = np.insert(action, index, 0)
         truncated = False
@@ -232,7 +232,7 @@ class ReachDropWrapper(gym.Wrapper):
         except:
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
-        success = state[f"over(gripper,{self.place_to_drop})"]
+        success = state[f"over(gripper,{self.place_to_drop})"] and state[f"grasped({self.obj_to_pick})"]
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success

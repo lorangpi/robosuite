@@ -6,7 +6,7 @@ from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detecto
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
-class PickPlaceWrapper(gym.Wrapper):
+class ReachAndPickWrapper(gym.Wrapper):
     def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
         # Run super method
         super().__init__(env=env)
@@ -45,6 +45,7 @@ class PickPlaceWrapper(gym.Wrapper):
             self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
         else:
             self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
+            print("ACTION SPACE: ", self.action_space)
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
@@ -203,24 +204,17 @@ class PickPlaceWrapper(gym.Wrapper):
         except:
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-        success = state[f"on({self.obj_to_pick},{self.place_to_drop})"] and not(state[f"grasped({self.obj_to_pick})"])
+        success = state[f"grasped({self.obj_to_pick})"] and state[f"picked_up({self.obj_to_pick})"]
         info['is_sucess'] = success
         if success:
-            print("Object successfully placed on the drop-off location", state[f"on({self.obj_to_pick},{self.place_to_drop})"])
+            print("Object successfully ppicked_up", state[f"picked_up({self.obj_to_pick})"])
         truncated = truncated or self.env.done
         terminated = terminated or success
-        if state[f"on({self.obj_to_pick},{self.place_to_drop})"] or state['grasped({})'.format(self.obj_to_pick)]:
-            obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
-        else:
-            obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
-        if state[f"over(gripper,{self.obj_to_pick})"]:
-            reward = 0.25
-        elif state[f"grasped({self.obj_to_pick})"]:
-            reward = 0.5
-        elif state[f"over(gripper,{self.place_to_drop})"]:
-            reward = 0.75
-        elif success:
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
+        if success:
             reward = 1
+        elif state[f"over(gripper,{self.obj_to_pick})"]:
+            reward = 0.5
         else:
             reward = 0
         self.step_count += 1
