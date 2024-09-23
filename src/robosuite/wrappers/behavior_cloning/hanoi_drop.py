@@ -42,7 +42,10 @@ class DropWrapper(gym.Wrapper):
         high = np.inf * np.ones(self.obs_dim)
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
-        self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
+        if self.nulified_action_indexes != []:
+            self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
+        else:
+            self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)

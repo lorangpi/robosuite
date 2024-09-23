@@ -41,13 +41,10 @@ class PickWrapper(gym.Wrapper):
         high = np.inf * np.ones(self.obs_dim)
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
-        low_action = self.env.action_space.low[:-len(nulified_action_indexes)]
-        high_action = self.env.action_space.high[:-len(nulified_action_indexes)]
-        # Transform low and high action space to numpy (they're torch sometimes)
-        #low_action = np.array(low_action)
-        #high_action = np.array(high_action)
-        # Reduce the action space by the length of the nulified indexes (take the range low high of the action space from the env.action_space)
-        self.action_space = gym.spaces.Box(low=low_action, high=high_action, dtype=np.float64)
+        if self.nulified_action_indexes != []:
+            self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
+        else:
+            self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
         #print("Action space: ", self.action_space)
         #print("Action sample: ", self.action_space.sample())
 

@@ -619,30 +619,38 @@ class Hanoi(SingleArmEnv):
             # position and rotation of the first cube
             @sensor(modality=modality)
             def cube1_pos(obs_cache):
+                #print("cube1_pos: ", self.sim.data.body_xpos[self.cube1_body_id])
                 return np.array(self.sim.data.body_xpos[self.cube1_body_id])
 
             @sensor(modality=modality)
             def cube1_quat(obs_cache):
+                #print("cube1_quat: ", convert_quat(np.array(self.sim.data.body_xquat[self.cube1_body_id]), to="xyzw"))
                 return convert_quat(np.array(self.sim.data.body_xquat[self.cube1_body_id]), to="xyzw")
 
             @sensor(modality=modality)
             def cube2_pos(obs_cache):
+                #print("cube2_pos: ", self.sim.data.body_xpos[self.cube2_body_id])
                 return np.array(self.sim.data.body_xpos[self.cube2_body_id])
 
             @sensor(modality=modality)
             def cube2_quat(obs_cache):
+                #print("cube2_quat: ", convert_quat(np.array(self.sim.data.body_xquat[self.cube2_body_id]), to="xyzw"))
                 return convert_quat(np.array(self.sim.data.body_xquat[self.cube2_body_id]), to="xyzw")
 
             @sensor(modality=modality)
             def cube3_pos(obs_cache):
+                #print("cube3_pos: ", self.sim.data.body_xpos[self.cube3_body_id])
                 return np.array(self.sim.data.body_xpos[self.cube3_body_id])
 
             @sensor(modality=modality)
             def cube3_quat(obs_cache):
+                #print("cube3_quat: ", convert_quat(np.array(self.sim.data.body_xquat[self.cube3_body_id]), to="xyzw"))
                 return convert_quat(np.array(self.sim.data.body_xquat[self.cube3_body_id]), to="xyzw")
 
             @sensor(modality=modality)
             def gripper_to_cube1(obs_cache):
+                print("gripper_to_cube1: ", obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"] if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                    else np.zeros(3))
                 return (
                     obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"]
                     if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
@@ -651,6 +659,8 @@ class Hanoi(SingleArmEnv):
 
             @sensor(modality=modality)
             def gripper_to_cube2(obs_cache):
+                print("gripper_to_cube2: ", obs_cache["cube2_pos"] - obs_cache[f"{pf}eef_pos"] if "cube2_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                    else np.zeros(3))
                 return (
                     obs_cache["cube2_pos"] - obs_cache[f"{pf}eef_pos"]
                     if "cube2_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
@@ -659,6 +669,9 @@ class Hanoi(SingleArmEnv):
 
             @sensor(modality=modality)
             def gripper_to_cube3(obs_cache):
+                print("gripper_to_cube3: ", obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"] if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                    else np.zeros(3))
+                print("")
                 return (
                     obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"]
                     if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
@@ -689,7 +702,8 @@ class Hanoi(SingleArmEnv):
                     else np.zeros(3)
                 )
             
-            sensors = [cube1_pos, cube1_quat, cube2_pos, cube2_quat, cube3_pos, cube3_quat, gripper_to_cube1, gripper_to_cube2, gripper_to_cube3, cube1_to_cube2, cube1_to_cube3, cube2_to_cube3]
+            #sensors = [cube1_pos, cube1_quat, cube2_pos, cube2_quat, cube3_pos, cube3_quat, gripper_to_cube1, gripper_to_cube2, gripper_to_cube3, cube1_to_cube2, cube1_to_cube3, cube2_to_cube3]
+            sensors = [cube1_pos, cube1_quat, cube2_pos, cube2_quat, cube3_pos, cube3_quat]
             names = [s.__name__ for s in sensors]
 
             # Create observables
