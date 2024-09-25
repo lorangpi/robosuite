@@ -215,12 +215,7 @@ class ReachAndPlaceWrapper(gym.Wrapper):
                     trials += 1
                     if trials > 3:
                         break   
-                # 3 times out of 4, the env is reset to another location
-                # if np.random.rand() < 0.25:
-                #     success = True
-                # else:
-                #     success, obs = self.reach_drop_reset()
-                success = True
+                success, obs = self.reach_drop_reset()
                 reset = success
                 if trials > 3:
                     break   
@@ -265,8 +260,10 @@ class ReachAndPlaceWrapper(gym.Wrapper):
         obs = self.filter_obs(obs)
         if success:
             reward = 1
+        elif state[f"on({self.obj_to_pick},{self.place_to_drop})"]:
+            reward = 0.66
         elif state[f"over(gripper,{self.place_to_drop})"]:
-            reward = 0.5
+            reward = 0.33
         else:
             reward = 0
         self.step_count += 1
