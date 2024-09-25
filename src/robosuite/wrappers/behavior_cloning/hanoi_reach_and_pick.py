@@ -224,7 +224,7 @@ class ReachAndPickWrapper(gym.Wrapper):
         success = state[f"grasped({self.obj_to_pick})"]
         info['is_sucess'] = success
         if success:
-            print("Object successfully picked", state[f"picked({self.obj_to_pick})"])
+            print("Object successfully grasped", state[f"grasped({self.obj_to_pick})"])
         truncated = truncated or self.env.done
         terminated = terminated or success
         #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
