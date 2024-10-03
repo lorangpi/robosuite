@@ -7,7 +7,7 @@ from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detecto
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
 class ReachAndPlaceWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500, goal_type='random'):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -17,6 +17,7 @@ class ReachAndPlaceWrapper(gym.Wrapper):
         self.nulified_action_indexes = nulified_action_indexes
         self.horizon = horizon
         self.step_count = 1
+        self.goal_type = goal_type
 
         # Define needed variables
         self.cube1_body = self.env.sim.model.body_name2id('cube1_main')
@@ -216,10 +217,18 @@ class ReachAndPlaceWrapper(gym.Wrapper):
                     if trials > 3:
                         break   
                 success, obs = self.reach_drop_reset()
-                reset = success
                 if trials > 3:
                     break   
-            self.task = self.sample_task()
+            if self.goal_type != 'random':
+                success = False
+                for trial in range(20):
+                    self.task = self.sample_task()
+                    if self.goal_type in self.place_to_drop:
+                        success = True
+                        break
+            else:
+                self.task = self.sample_task()
+            reset = success
 
         self.sim.forward()
         self.goal = self.place_to_drop
@@ -261,9 +270,7 @@ class ReachAndPlaceWrapper(gym.Wrapper):
         if success:
             reward = 1
         elif state[f"on({self.obj_to_pick},{self.place_to_drop})"]:
-            reward = 0.66
-        elif state[f"over(gripper,{self.place_to_drop})"]:
-            reward = 0.33
+            reward = 0.5
         else:
             reward = 0
         self.step_count += 1

@@ -36,7 +36,7 @@ class PickPlaceWrapper(gym.Wrapper):
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
-        self.obs_dim = self.env.obs_dim + 3 # 1 extra dimensions for the object goal
+        self.obs_dim = 47#self.env.obs_dim + 3 # 1 extra dimensions for the object goal
 
         high = np.inf * np.ones(self.obs_dim)
         low = -high
@@ -229,6 +229,7 @@ class PickPlaceWrapper(gym.Wrapper):
         else:
             #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
             self.goal = self.obj_to_pick
+        print("ENV Goal: ", self.goal)
         if state[f"over(gripper,{self.obj_to_pick})"]:
             reward = 0.25
         elif state[f"grasped({self.obj_to_pick})"]:
