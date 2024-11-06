@@ -1,5 +1,6 @@
 import copy
-import gymnasium as gym
+#import gymnasium as gym
+import gym
 import robosuite as suite
 import numpy as np
 from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
@@ -36,7 +37,7 @@ class PickPlaceWrapper(gym.Wrapper):
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
-        self.obs_dim = 47#self.env.obs_dim + 3 # 1 extra dimensions for the object goal
+        self.obs_dim = 15#self.env.obs_dim + 3 # 1 extra dimensions for the object goal
 
         high = np.inf * np.ones(self.obs_dim)
         low = -high
@@ -191,7 +192,15 @@ class PickPlaceWrapper(gym.Wrapper):
         self.goal = self.obj_to_pick
         #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
         obs = self.filter_obs(obs)
-        #print("Reset Obs shape: ", obs.shape)
+        goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
+        goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
+
+        self.keypoint = np.concatenate([goal_pos, goal_quat])
+        info["keypoint"] = self.keypoint
+        state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        info["state"] = state
+        info["task"] = (self.obj_to_pick, self.place_to_drop)
+
         return obs, info
 
     def filter_obs(self, obs):
@@ -199,12 +208,19 @@ class PickPlaceWrapper(gym.Wrapper):
         # If cube1 is the object to pick, then the observation should only include the position and quat of cube1
         # cube1: obs[0:7], cube2: obs[7:14], cube3: obs[14:21] and rest of the obs (21::)
         map_cube_obs = {"cube1": obs[0:7], "cube2": obs[7:14], "cube3": obs[14:21]}
+        gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
+        gripper_quat = np.asarray(self.env.sim.data.body_xquat[self.env.gripper_body])
+        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
+        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+        aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
         if 'cube' in self.goal:
-            return np.concatenate([map_cube_obs[self.goal], obs[21:]])
+            #return np.concatenate([map_cube_obs[self.goal], obs[21:]])
+            return np.concatenate([map_cube_obs[self.goal], gripper_pos, gripper_quat, [aperture]])
         elif 'peg' in self.goal:
-            peg_pos = self.env.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
+            peg_pos = self.env.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3] - np.array([0.1, 0.04, 0])
             peg_pos = np.concatenate([peg_pos, [0, 0, 0, 1]])
-            return np.concatenate([peg_pos, obs[21:]])
+            #return np.concatenate([peg_pos, obs[21:]])
+            return np.concatenate([peg_pos, gripper_pos, gripper_quat, [aperture]])
 
     def step(self, action):
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
@@ -216,6 +232,7 @@ class PickPlaceWrapper(gym.Wrapper):
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
             obs, reward, terminated, info = self.env.step(action)
+        self.env.render() if self.render_init else None
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         success = state[f"on({self.obj_to_pick},{self.place_to_drop})"] and not(state[f"grasped({self.obj_to_pick})"])
         info['is_sucess'] = success
@@ -229,7 +246,7 @@ class PickPlaceWrapper(gym.Wrapper):
         else:
             #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
             self.goal = self.obj_to_pick
-        print("ENV Goal: ", self.goal)
+        #print("ENV Goal: ", self.goal)
         if state[f"over(gripper,{self.obj_to_pick})"]:
             reward = 0.25
         elif state[f"grasped({self.obj_to_pick})"]:
@@ -244,5 +261,11 @@ class PickPlaceWrapper(gym.Wrapper):
         if self.step_count > self.horizon:
             terminated = True
         obs = self.filter_obs(obs)
-        #print("Step Obs shape: ", obs.shape)
+        goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
+        goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
+
+        self.keypoint = np.concatenate([goal_pos, goal_quat])
+        info["keypoint"] = self.keypoint
+        info["state"] = state
+        info["task"] = (self.obj_to_pick, self.place_to_drop)
         return obs, reward, terminated, truncated, info
