@@ -37,7 +37,7 @@ class PickPlaceWrapper(gym.Wrapper):
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
-        self.obs_dim = 15#self.env.obs_dim + 3 # 1 extra dimensions for the object goal
+        self.obs_dim = 10
 
         high = np.inf * np.ones(self.obs_dim)
         low = -high
@@ -103,7 +103,8 @@ class PickPlaceWrapper(gym.Wrapper):
         self.obj_to_pick = cube_to_pick
         self.place_to_drop = place_to_drop
         #print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
-        return f"on({cube_to_pick},{place_to_drop})"
+        #return f"on({cube_to_pick},{place_to_drop})"
+        return (cube_to_pick, place_to_drop)
 
     def reach_pick_reset(self):
         """
@@ -192,17 +193,39 @@ class PickPlaceWrapper(gym.Wrapper):
         self.goal = self.obj_to_pick
         #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
         obs = self.filter_obs(obs)
-        goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
-        goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
+        goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
+        #goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
 
         #self.keypoint = np.concatenate([goal_pos, goal_quat])
         self.keypoint = goal_pos
         info["keypoint"] = self.keypoint
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         info["state"] = state
-        info["task"] = (self.obj_to_pick, self.place_to_drop)
+        info["task"] = self.task
 
         return obs, info
+
+    # def filter_obs(self, obs):
+    #     # Filter the observations to only include the relevant information
+    #     # If cube1 is the object to pick, then the observation should only include the position and quat of cube1
+    #     # cube1: obs[0:7], cube2: obs[7:14], cube3: obs[14:21] and rest of the obs (21::)
+    #     map_cube_obs = {"cube1": obs[0:7], "cube2": obs[7:14], "cube3": obs[14:21]}
+    #     gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
+    #     gripper_quat = np.asarray(self.env.sim.data.body_xquat[self.env.gripper_body])
+    #     left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
+    #     right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+    #     aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+    #     #aperture = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)['open_gripper(gripper)']
+    #     if 'cube' in self.goal:
+    #         #return np.concatenate([map_cube_obs[self.goal], obs[21:]])
+    #         #return np.concatenate([map_cube_obs[self.goal], gripper_pos, gripper_quat, [aperture]])
+    #         return np.concatenate([map_cube_obs[self.goal][:3], gripper_pos + np.array([0.05, 0, 0]), [aperture]])
+    #     elif 'peg' in self.goal:
+    #         peg_pos = self.env.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3] - np.array([0.1, 0.04, 0])
+    #         peg_pos = np.concatenate([peg_pos, [0, 0, 0, 1]])
+    #         #return np.concatenate([peg_pos, obs[21:]])
+    #         #return np.concatenate([peg_pos, gripper_pos, gripper_quat, [aperture]])
+    #         return np.concatenate([peg_pos[:3], gripper_pos, [aperture]])
 
     def filter_obs(self, obs):
         # Filter the observations to only include the relevant information
@@ -210,21 +233,14 @@ class PickPlaceWrapper(gym.Wrapper):
         # cube1: obs[0:7], cube2: obs[7:14], cube3: obs[14:21] and rest of the obs (21::)
         map_cube_obs = {"cube1": obs[0:7], "cube2": obs[7:14], "cube3": obs[14:21]}
         gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
-        gripper_quat = np.asarray(self.env.sim.data.body_xquat[self.env.gripper_body])
         left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
         right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+        
+        obj_to_pick_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3])
+        place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3])
         #aperture = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)['open_gripper(gripper)']
-        if 'cube' in self.goal:
-            #return np.concatenate([map_cube_obs[self.goal], obs[21:]])
-            #return np.concatenate([map_cube_obs[self.goal], gripper_pos, gripper_quat, [aperture]])
-            return np.concatenate([map_cube_obs[self.goal][:3], gripper_pos, [aperture]])
-        elif 'peg' in self.goal:
-            peg_pos = self.env.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3] - np.array([0.1, 0.04, 0])
-            peg_pos = np.concatenate([peg_pos, [0, 0, 0, 1]])
-            #return np.concatenate([peg_pos, obs[21:]])
-            #return np.concatenate([peg_pos, gripper_pos, gripper_quat, [aperture]])
-            return np.concatenate([peg_pos[:3], gripper_pos, [aperture]])
+        return np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
 
     def step(self, action):
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
@@ -247,9 +263,9 @@ class PickPlaceWrapper(gym.Wrapper):
         if state[f"on({self.obj_to_pick},{self.place_to_drop})"] or state['grasped({})'.format(self.obj_to_pick)]:
             #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
             self.goal = self.place_to_drop
-        else:
-            #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
-            self.goal = self.obj_to_pick
+        #else:
+        #    #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
+        #    self.goal = self.obj_to_pick
         #print("ENV Goal: ", self.goal)
         if state[f"over(gripper,{self.obj_to_pick})"]:
             reward = 0.25
@@ -265,9 +281,8 @@ class PickPlaceWrapper(gym.Wrapper):
         if self.step_count > self.horizon:
             terminated = True
         obs = self.filter_obs(obs)
-        goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
-        goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
-
+        goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
+        #goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
         #self.keypoint = np.concatenate([goal_pos, goal_quat])
         self.keypoint = goal_pos
         info["keypoint"] = self.keypoint
