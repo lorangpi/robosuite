@@ -195,7 +195,8 @@ class PickPlaceWrapper(gym.Wrapper):
         goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
         goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
 
-        self.keypoint = np.concatenate([goal_pos, goal_quat])
+        #self.keypoint = np.concatenate([goal_pos, goal_quat])
+        self.keypoint = goal_pos
         info["keypoint"] = self.keypoint
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         info["state"] = state
@@ -213,14 +214,17 @@ class PickPlaceWrapper(gym.Wrapper):
         left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
         right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+        #aperture = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)['open_gripper(gripper)']
         if 'cube' in self.goal:
             #return np.concatenate([map_cube_obs[self.goal], obs[21:]])
-            return np.concatenate([map_cube_obs[self.goal], gripper_pos, gripper_quat, [aperture]])
+            #return np.concatenate([map_cube_obs[self.goal], gripper_pos, gripper_quat, [aperture]])
+            return np.concatenate([map_cube_obs[self.goal][:3], gripper_pos, [aperture]])
         elif 'peg' in self.goal:
             peg_pos = self.env.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3] - np.array([0.1, 0.04, 0])
             peg_pos = np.concatenate([peg_pos, [0, 0, 0, 1]])
             #return np.concatenate([peg_pos, obs[21:]])
-            return np.concatenate([peg_pos, gripper_pos, gripper_quat, [aperture]])
+            #return np.concatenate([peg_pos, gripper_pos, gripper_quat, [aperture]])
+            return np.concatenate([peg_pos[:3], gripper_pos, [aperture]])
 
     def step(self, action):
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
@@ -264,7 +268,8 @@ class PickPlaceWrapper(gym.Wrapper):
         goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
         goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
 
-        self.keypoint = np.concatenate([goal_pos, goal_quat])
+        #self.keypoint = np.concatenate([goal_pos, goal_quat])
+        self.keypoint = goal_pos
         info["keypoint"] = self.keypoint
         info["state"] = state
         info["task"] = (self.obj_to_pick, self.place_to_drop)
