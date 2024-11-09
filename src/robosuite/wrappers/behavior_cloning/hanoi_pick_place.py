@@ -239,8 +239,39 @@ class PickPlaceWrapper(gym.Wrapper):
         
         obj_to_pick_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3])
         place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3])
-        #aperture = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)['open_gripper(gripper)']
-        return np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
+        if 'peg' in self.place_to_drop:
+            place_to_drop_pos = place_to_drop_pos - np.array([0.1, 0.04, 0])
+        obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
+        # x1000 to scale the values
+        obs = obs * 1000
+        return obs
+
+    # def control_gripper(self, gripper_action):
+    #     if -0.5 < gripper_action < 0.5:
+    #         return
+    #     if gripper_action <= -0.5:
+    #         # Close the gripper
+    #         for i in range(1):
+    #             self.env.step(np.array([0, 0, 0, 0.1]))
+    #     elif gripper_action >= 0.5:
+    #         # Open the gripper
+    #         for i in range(1):
+    #             self.env.step(np.array([0, 0, 0, -0.1]))
+
+    def map_gripper(self, action):
+        # Change last value of the action (called gripper_action) to a mapped discretized value of the gripper opening
+        # -0.5 < gripper_action < 0.5 is mapped to 0
+        # gripper_action <= -0.5 is mapped to 0.1
+        # gripper_action >= -0.5 is mapped to -0.1
+        # Returns the modified action array
+        action_gripper = action[-1]
+        if -0.5 < action_gripper < 0.5:
+            action_gripper = np.array([0])
+        if action_gripper <= -0.5:
+            action_gripper = np.array([0.1])
+        elif action_gripper >= 0.5:
+            action_gripper = np.array([-0.1])
+        action = np.concatenate([action[:3], action_gripper])
 
     def step(self, action):
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
@@ -248,6 +279,7 @@ class PickPlaceWrapper(gym.Wrapper):
             for index in self.nulified_action_indexes:
                 action = np.insert(action, index, 0)
         truncated = False
+        action = self.map_gripper(action)
         try:
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
