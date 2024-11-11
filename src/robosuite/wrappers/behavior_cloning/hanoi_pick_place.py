@@ -8,7 +8,7 @@ from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detecto
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
 class PickPlaceWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=2000):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -244,6 +244,7 @@ class PickPlaceWrapper(gym.Wrapper):
         obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         # x1000 to scale the values
         obs = obs * 1000
+        #print("Z gripper: ", gripper_pos[2], " Z obj_to_pick: ", obj_to_pick_pos[2], " Z place_to_drop: ", place_to_drop_pos[2])
         return obs
 
     # def control_gripper(self, gripper_action):
@@ -272,8 +273,12 @@ class PickPlaceWrapper(gym.Wrapper):
         elif action_gripper >= 0.5:
             action_gripper = np.array([-0.1])
         action = np.concatenate([action[:3], action_gripper])
+        return action
 
     def step(self, action):
+        #print("Displacement action: ", np.linalg.norm(action[:3]))
+        # divide the action by 1000 to scale the values
+        action = np.asarray(action) / 1000
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
         if self.nulified_action_indexes != []:
             for index in self.nulified_action_indexes:
@@ -287,7 +292,7 @@ class PickPlaceWrapper(gym.Wrapper):
         self.env.render() if self.render_init else None
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         success = state[f"on({self.obj_to_pick},{self.place_to_drop})"] and not(state[f"grasped({self.obj_to_pick})"])
-        info['is_sucess'] = success
+        info['is_success'] = success
         if success:
             print("Object successfully placed on the drop-off location", state[f"on({self.obj_to_pick},{self.place_to_drop})"])
         truncated = truncated or self.env.done
@@ -311,6 +316,7 @@ class PickPlaceWrapper(gym.Wrapper):
             reward = 0
         self.step_count += 1
         if self.step_count > self.horizon:
+            print("Horizon reached within environment")
             terminated = True
         obs = self.filter_obs(obs)
         goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
