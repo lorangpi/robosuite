@@ -145,6 +145,48 @@ class Cube4Object(MujocoXMLObject):
             duplicate_collision_geoms=True,
         )
 
+class Cube5Object(MujocoXMLObject):
+    """
+    Cube1 box object (used in Hanoi)
+    """
+
+    def __init__(self, name):
+        super().__init__(
+            xml_path_completion("objects/cube1.xml"),
+            name=name,
+            joints=[dict(type="free", damping="0.0005")],
+            obj_type="all",
+            duplicate_collision_geoms=True,
+        )
+
+class Cube6Object(MujocoXMLObject):
+    """
+    Cube1 box object (used in Hanoi)
+    """
+
+    def __init__(self, name):
+        super().__init__(
+            xml_path_completion("objects/cube1.xml"),
+            name=name,
+            joints=[dict(type="free", damping="0.0005")],
+            obj_type="all",
+            duplicate_collision_geoms=True,
+        )
+
+class Cube7Object(MujocoXMLObject):
+    """
+    Cube1 box object (used in Hanoi)
+    """
+
+    def __init__(self, name):
+        super().__init__(
+            xml_path_completion("objects/cube1.xml"),
+            name=name,
+            joints=[dict(type="free", damping="0.0005")],
+            obj_type="all",
+            duplicate_collision_geoms=True,
+        )
+
 
 class SquareNutObject(MujocoXMLObject):
     """

@@ -167,6 +167,7 @@ class Hanoi(SingleArmEnv):
         renderer_config=None,
         random_reset = False,
     ):
+        self.env_id = "Hanoi"
         # settings for table top
         self.table_full_size = table_full_size
         self.table_friction = table_friction

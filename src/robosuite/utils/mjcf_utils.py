@@ -127,6 +127,9 @@ TEXTURE_FILES = {
     "Number2": "number2.png",
     "Number3": "number3.png",
     "Number4": "number4.png",
+    "Number5": "number5.png",
+    "Number6": "number6.png",
+    "Number7": "number7.png",
 }
 
 TEXTURES = {
