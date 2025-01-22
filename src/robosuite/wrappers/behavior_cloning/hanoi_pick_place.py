@@ -1,6 +1,6 @@
 import copy
-import gymnasium as gym
-#import gym
+#import gymnasium as gym
+import gym
 import robosuite as suite
 import numpy as np
 from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
@@ -261,7 +261,10 @@ class PickPlaceWrapper(gym.Wrapper):
         self.sim.forward()
         self.goal = self.obj_to_pick
         #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
-        obs = self.filter_obs(obs)
+        if self.oracle:
+            obs = self.filter_obs(obs)
+        else:
+            obs = self.simple_obs(obs)
         goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
         #goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
 
@@ -408,9 +411,15 @@ class PickPlaceWrapper(gym.Wrapper):
             print("Horizon reached within environment")
             terminated = True
         if self.oracle:
+            obs_copy = copy.deepcopy(obs)
             obs = self.filter_obs(obs)
+            obs_copy = self.simple_obs(obs_copy)
+            info["obs_base"] = obs_copy
         else:
+            obs_filter = copy.deepcopy(obs)
             obs = self.simple_obs(obs)
+            obs_filter = self.filter_obs(obs_filter)
+            info["obs_filter"] = obs_filter
         # x1000 to scale the values
         obs = obs * 1000
         goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
