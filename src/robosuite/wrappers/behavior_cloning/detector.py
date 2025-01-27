@@ -181,7 +181,7 @@ class RoboSuite_PickPlace_Detector:
             if return_distance:
                 return dist_xy
             else:
-                return bool(dist_xy < 0.02)
+                return bool(dist_xy < 0.005)
         else:
             return None
 
