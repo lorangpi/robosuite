@@ -29,7 +29,7 @@ class GymWrapper(Wrapper, GoalEnv):
         AssertionError: [Object observations must be enabled if no keys]
     """
 
-    def __init__(self, env, keys=None):
+    def __init__(self, env, keys=None, proprio_obs=True):
         # Run super method
         super().__init__(env=env)
         # Create name for gym
@@ -48,8 +48,9 @@ class GymWrapper(Wrapper, GoalEnv):
             if self.env.use_camera_obs:
                 keys += [f"{cam_name}_image" for cam_name in self.env.camera_names]
             # Iterate over all robots to add to state
-            for idx in range(len(self.env.robots)):
-                keys += ["robot{}_proprio-state".format(idx)]
+            if proprio_obs:
+                for idx in range(len(self.env.robots)):
+                    keys += ["robot{}_proprio-state".format(idx)]
         self.keys = keys
 
         # Gym specific attributes
@@ -102,6 +103,7 @@ class GymWrapper(Wrapper, GoalEnv):
             else:
                 raise TypeError("Seed must be an integer type!")
         ob_dict = self.env.reset()
+        #print(ob_dict["agentview_image"].shape)
         return self._flatten_obs(ob_dict)
 
     def seed(self, seed=None):

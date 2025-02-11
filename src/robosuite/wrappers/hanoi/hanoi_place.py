@@ -1,22 +1,25 @@
 import copy
 import gymnasium as gym
+#import gym
 import robosuite as suite
 import numpy as np
-from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
+from robosuite.utils.detector import HanoiDetector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
-class ReachDropWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
+class PlaceWrapper(gym.Wrapper):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500, goal_type='random', image_obs=True):
         # Run super method
         super().__init__(env=env)
         self.env = env
         self.use_gripper = True
         self.render_init = render_init
-        self.detector = Robosuite_Hanoi_Detector(self)
+        self.detector = HanoiDetector(self)
         self.nulified_action_indexes = nulified_action_indexes
         self.horizon = horizon
         self.step_count = 1
+        self.goal_type = goal_type
+        self.image_obs = image_obs
 
         # Define needed variables
         self.cube1_body = self.env.sim.model.body_name2id('cube1_main')
@@ -36,7 +39,7 @@ class ReachDropWrapper(gym.Wrapper):
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
-        self.obs_dim = self.env.obs_dim + 3 # 1 extra dimensions for the object goal
+        self.obs_dim = 15#self.env.obs_dim + 3 # 1 extra dimensions for the object goal
 
         high = np.inf * np.ones(self.obs_dim)
         low = -high
@@ -45,6 +48,7 @@ class ReachDropWrapper(gym.Wrapper):
             self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
         else:
             self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
+            print("ACTION SPACE: ", self.action_space)
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
@@ -112,10 +116,20 @@ class ReachDropWrapper(gym.Wrapper):
         self.state_memory = state
 
         self.reset_step_count = 0
+
+        # # Moving randomly 0 to 50 steps
+        # for k in range(np.random.randint(1, 50)):
+        #     generate_random_3d_action = np.random.uniform(-0.2, 0.2, 3)
+        #     action = np.concatenate([generate_random_3d_action, [0]])
+        #     obs,_,_,_,_ = self.env.step(action)
+        #     self.env.render() if self.render_init else None
+
         #print("Moving up...")
         for _ in range(5):
             obs,_,_,_,_ = self.env.step([0,0,1,0])
             self.env.render() if self.render_init else None
+        state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        self.state_memory = state
 
         #print("Moving gripper over object...")
         while not state['over(gripper,{})'.format(self.obj_to_pick)]:
@@ -192,6 +206,7 @@ class ReachDropWrapper(gym.Wrapper):
 
     def reset(self, seed=None):
         # Reset the environment for the drop trask
+        self.picked_up = False
         self.step_count = 1
         reset = False
         while not reset:
@@ -213,38 +228,134 @@ class ReachDropWrapper(gym.Wrapper):
                     if trials > 3:
                         break   
                 success, obs = self.reach_drop_reset()
-                reset = success
                 if trials > 3:
                     break   
-        self.task = self.sample_task()
+            if self.goal_type != 'random':
+                success = False
+                for trial in range(20):
+                    self.task = self.sample_task()
+                    if self.goal_type in self.place_to_drop:
+                        success = True
+                        break
+            else:
+                self.task = self.sample_task()
+            reset = success
 
         self.sim.forward()
-        # replace the goal object id with its array of x, y, z location
-        self.goal = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]
-        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
+        self.goal = self.place_to_drop
+        #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
+        if not self.image_obs:
+            obs = self.filter_obs(obs)
+        goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
+        goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
+
+        self.keypoint = np.concatenate([goal_pos, goal_quat])
+        info["keypoint"] = self.keypoint
+        info["state"] = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+
         return obs, info
+
+    def filter_obs_proprio(self, obs):
+        # Filter the observations to only include the relevant information
+        # If cube1 is the object to pick, then the observation should only include the position and quat of cube1
+        # cube1: obs[0:7], cube2: obs[7:14], cube3: obs[14:21] and rest of the obs (21::)
+        map_cube_obs = {"cube1": obs[0:7], "cube2": obs[7:14], "cube3": obs[14:21]}
+        if 'cube' in self.goal:
+            return np.concatenate([map_cube_obs[self.goal], obs[21:]])
+        elif 'peg' in self.goal:
+            peg_pos = self.env.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
+            peg_pos = np.concatenate([peg_pos, [0, 0, 0, 1]])
+            return np.concatenate([peg_pos, obs[21:]])
+        
+    def filter_obs(self, obs):
+        # Filter the observations to only include the relevant information
+        # If cube1 is the object to pick, then the observation should only include the position and quat of cube1
+        # cube1: obs[0:7], cube2: obs[7:14], cube3: obs[14:21] and rest of the obs (21::)
+        map_cube_obs = {"cube1": obs[0:7], "cube2": obs[7:14], "cube3": obs[14:21]}
+        gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
+        gripper_quat = np.asarray(self.env.sim.data.body_xquat[self.env.gripper_body])
+        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
+        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+        aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+        if 'cube' in self.goal:
+            #return np.concatenate([map_cube_obs[self.goal], obs[21:]])
+            return np.concatenate([map_cube_obs[self.goal], gripper_pos, gripper_quat, [aperture]])
+        elif 'peg' in self.goal:
+            peg_pos = self.env.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3] - np.array([0.1, 0.04, 0])
+            peg_pos = np.concatenate([peg_pos, [0, 0, 0, 1]])
+            #return np.concatenate([peg_pos, obs[21:]])
+            return np.concatenate([peg_pos, gripper_pos, gripper_quat, [aperture]])
+
+    def map_gripper(self, action):
+        # Change last value of the action (called gripper_action) to a mapped discretized value of the gripper opening
+        # -0.5 < gripper_action < 0.5 is mapped to 0
+        # gripper_action <= -0.5 is mapped to 0.1
+        # gripper_action >= -0.5 is mapped to -0.1
+        # Returns the modified action array
+        action_gripper = action[-1]
+        if -0.5 < action_gripper < 0.5:
+            action_gripper = np.array([0])
+        if action_gripper <= -0.5:
+            action_gripper = np.array([0.1])
+        elif action_gripper >= 0.5:
+            action_gripper = np.array([-0.1])
+        action = np.concatenate([action[:3], action_gripper])
+        return action
 
     def step(self, action):
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
         if self.nulified_action_indexes != []:
             for index in self.nulified_action_indexes:
                 action = np.insert(action, index, 0)
+        action = self.map_gripper(action)
         truncated = False
         try:
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
             obs, reward, terminated, info = self.env.step(action)
-        state = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
-        success = state[f"over(gripper,{self.place_to_drop})"] and state[f"grasped({self.obj_to_pick})"]
+        self.env.render() if self.render_init else None
+        state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        success = state[f"on({self.obj_to_pick},{self.place_to_drop})"] and not(state[f"grasped({self.obj_to_pick})"])
         info['is_sucess'] = success
+        if success:
+            print("Object successfully placed on the drop-off location", state[f"on({self.obj_to_pick},{self.place_to_drop})"])
         truncated = truncated or self.env.done
         terminated = terminated or success
-        if 'cube' in self.place_to_drop:
-            obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
+        #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
+        if not self.image_obs:
+            obs = self.filter_obs(obs)
+        if success:
+            reward = 10
+        elif state[f"on({self.obj_to_pick},{self.place_to_drop})"]:
+            reward = -2
+        elif state[f"over(gripper,{self.place_to_drop})"]:
+            drop_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][2]
+            gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
+            dist = np.linalg.norm(drop_pos - gripper_pos)
+            reward = -4 - (np.tanh(10.0 * dist))
+        elif state[f"picked_up({self.obj_to_pick})"] or self.picked_up:
+            drop_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:2]
+            gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
+            dist = np.linalg.norm(drop_pos - gripper_pos)
+            reward = -6 - (np.tanh(10.0 * dist))
+            self.picked_up = True
+        elif not(state[f"grasped({self.obj_to_pick})"]):
+            self.picked_up = False
+            pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
+            gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:3]
+            dist = np.linalg.norm(pick_pos - gripper_pos)
+            reward = -20 - (np.tanh(10.0 * dist))
         else:
-            obs = np.concatenate((obs, self.area_pos[self.place_to_drop]))
-        reward = 1 if success else 0
+            pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
+            table_pos = self.env.table_offset[2] + 0.45
+            dist = np.linalg.norm(pick_pos - table_pos)
+            reward = -8 - (np.tanh(10.0 * dist))
+        
+
         self.step_count += 1
         if self.step_count > self.horizon:
             terminated = True
+        info["keypoint"] = self.keypoint
+        info["state"] = state
+        print(self.obj_to_pick, self.place_to_drop)
         return obs, reward, terminated, truncated, info

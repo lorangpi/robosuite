@@ -115,3 +115,7 @@ mjkey.txt
 
 # private macros
 macros_private.py
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/

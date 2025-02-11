@@ -9,6 +9,7 @@ from robosuite.environments.manipulation.hanoi4x4 import Hanoi4x4
 from robosuite.environments.manipulation.hanoi5x4 import Hanoi5x4
 from robosuite.environments.manipulation.hanoi5x5 import Hanoi5x5
 from robosuite.environments.manipulation.hanoi7x5 import Hanoi7x5
+from robosuite.environments.manipulation.kitchen_modified import KitchenEnv
 from robosuite.environments.manipulation.nut_assembly import NutAssembly
 from robosuite.environments.manipulation.pick_place import PickPlace
 from robosuite.environments.manipulation.door import Door

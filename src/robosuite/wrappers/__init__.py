@@ -7,6 +7,6 @@ from robosuite.wrappers.goal_env import GoalEnv
 
 try:
     from robosuite.wrappers.gym_wrapper import GymWrapper
-    from robosuite.wrappers.behavior_cloning.hanoi_drop import DropWrapper
+    from robosuite.wrappers.hanoi.hanoi_drop import DropWrapper
 except:
     print("Warning: make sure gym is installed if you want to use the GymWrapper.")

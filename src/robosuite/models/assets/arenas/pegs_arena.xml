@@ -42,11 +42,11 @@
       <geom pos="0 0 0" size="0.05 0.1" type="cylinder" conaffinity="0" contype="0" group="1" name="table_leg3_visual" material="table_legs_metal"/>
       <geom pos="0 0 0" size="0.05 0.1" type="cylinder" conaffinity="0" contype="0" group="1" name="table_leg4_visual" material="table_legs_metal"/>
     </body>
-    <body name="peg1" pos="0.23 0.1 0.85">
+    <body name="peg1" pos="0.03 0.1 0.85">
       <geom pos="0 0 0" size="0.016 0.016 0.1" type="box" group="0" friction="1 0.005 0.0001"/>
       <geom pos="0 0 0" size="0.016 0.016 0.1" type="box" conaffinity="0" contype="0" group="1" material="bmetal" />
     </body>
-    <body name="peg2" pos="0.23 -0.1 0.85">
+    <body name="peg2" pos="0.03 -0.1 0.85">
       <geom pos="0 0 0" size="0.02 0.1" type="cylinder" group="0" friction="1 0.005 0.0001"/>
       <geom pos="0 0 0" size="0.02 0.1" type="cylinder" conaffinity="0" contype="0" group="1" material="smetal" />
     </body>
