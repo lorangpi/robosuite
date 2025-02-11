@@ -1,23 +1,24 @@
 import copy
-#import gymnasium as gym
-import gym
+import gymnasium as gym
+#import gym
 import robosuite as suite
 import numpy as np
-from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
+from robosuite.utils.detector import HanoiDetector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
-class ReachAndPickWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
+class PickWrapper(gym.Wrapper):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500, image_obs=True):
         # Run super method
         super().__init__(env=env)
         self.env = env
         self.use_gripper = True
         self.render_init = render_init
-        self.detector = Robosuite_Hanoi_Detector(self)
+        self.detector = HanoiDetector(self)
         self.nulified_action_indexes = nulified_action_indexes
         self.horizon = horizon
         self.step_count = 1
+        self.image_obs = image_obs
 
         # Define needed variables
         self.cube1_body = self.env.sim.model.body_name2id('cube1_main')
@@ -195,12 +196,14 @@ class ReachAndPickWrapper(gym.Wrapper):
         self.sim.forward()
         self.goal = self.obj_to_pick
         #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
-        obs = self.filter_obs(obs)
+        if not self.image_obs:
+            obs = self.filter_obs(obs)
         goal_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.goal]][:3]
         goal_quat = self.env.sim.data.body_xquat[self.obj_mapping[self.goal]]
 
         self.keypoint = np.concatenate([goal_pos, goal_quat])
         info["keypoint"] = self.keypoint
+        info["state"] = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
 
         return obs, info
 
@@ -235,11 +238,28 @@ class ReachAndPickWrapper(gym.Wrapper):
             #return np.concatenate([peg_pos, obs[21:]])
             return np.concatenate([peg_pos, gripper_pos, gripper_quat, [aperture]])
 
+    def map_gripper(self, action):
+        # Change last value of the action (called gripper_action) to a mapped discretized value of the gripper opening
+        # -0.5 < gripper_action < 0.5 is mapped to 0
+        # gripper_action <= -0.5 is mapped to 0.1
+        # gripper_action >= -0.5 is mapped to -0.1
+        # Returns the modified action array
+        action_gripper = action[-1]
+        if -0.5 < action_gripper < 0.5:
+            action_gripper = np.array([0])
+        if action_gripper <= -0.5:
+            action_gripper = np.array([0.1])
+        elif action_gripper >= 0.5:
+            action_gripper = np.array([-0.1])
+        action = np.concatenate([action[:3], action_gripper])
+        return action
+
     def step(self, action):
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
         if self.nulified_action_indexes != []:
             for index in self.nulified_action_indexes:
                 action = np.insert(action, index, 0)
+        action = self.map_gripper(action)
         truncated = False
         try:
             obs, reward, terminated, truncated, info = self.env.step(action)
@@ -254,15 +274,23 @@ class ReachAndPickWrapper(gym.Wrapper):
         truncated = truncated or self.env.done
         terminated = terminated or success
         #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
-        obs = self.filter_obs(obs)
+        if not self.image_obs:
+            obs = self.filter_obs(obs)
         if success:
-            reward = 1
+            reward = 10
         elif state[f"over(gripper,{self.obj_to_pick})"]:
-            reward = 0.5
+            pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
+            gripper_pos = self.env.sim.data.body_xpos[self.env.gripper_body][2]
+            dist = np.abs(gripper_pos - pick_pos)   
+            reward = -2 - (np.tanh(10.0 * dist))
         else:
-            reward = 0
+            pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:2]
+            gripper_pos = self.env.sim.data.body_xpos[self.env.gripper_body][:2]
+            dist = np.linalg.norm(gripper_pos - pick_pos)
+            reward = -3 - (np.tanh(10.0 * dist))
         self.step_count += 1
         if self.step_count > self.horizon:
             terminated = True
         info["keypoint"] = self.keypoint
+        info["state"] = state
         return obs, reward, terminated, truncated, info
