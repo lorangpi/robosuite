@@ -915,7 +915,7 @@ class KitchenDetector:
             button_on_value = self.button_on()
             if binary_to_float:
                 button_on_value = float(button_on_value)
-            for button in ['Button1']:
+            for button in ['button']:
                 groundings[f'stove_on()'] = button_on_value
 
             return dict(sorted(groundings.items())) if as_dict else np.asarray([v for k, v in sorted(groundings.items())])

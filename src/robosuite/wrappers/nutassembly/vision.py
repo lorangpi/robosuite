@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 import os
 
-class HanoiVisionWrapper(gym.Wrapper):
+class AssembleVisionWrapper(gym.Wrapper):
     def __init__(self, env):
         # Run super method
         super().__init__(env=env)
@@ -15,18 +15,15 @@ class HanoiVisionWrapper(gym.Wrapper):
         # Load objects images
         base_path = os.path.join(os.path.dirname(__file__), '..', '..', 'models', 'assets', 'textures')
         self.objects_image = {
-            "cube1": cv2.imread(os.path.join(base_path, "number1.png")),
-            "cube2": cv2.imread(os.path.join(base_path, "number2.png")),
-            "cube3": cv2.imread(os.path.join(base_path, "number3.png"))
+            "roundnut": cv2.imread(os.path.join(base_path, "roundnut.png")),
+            "squarenut": cv2.imread(os.path.join(base_path, "squarenut.png")),
+            "roundpeg": cv2.imread(os.path.join(base_path, "roundpeg.png")),
+            "squarepeg": cv2.imread(os.path.join(base_path, "squarepeg.png"))
         }
         # Reshape the images to 32x32 and rotate them 90 degrees
         for k in self.objects_image:
             self.objects_image[k] = cv2.resize(self.objects_image[k], (32, 32))
-            self.objects_image[k] = cv2.rotate(self.objects_image[k], cv2.ROTATE_90_CLOCKWISE)
-        # Create black, grey and white images for "peg1", "peg2" and "peg3"
-        self.objects_image["peg1"] = np.zeros((32, 32, 3), dtype=np.uint8)
-        self.objects_image["peg2"] = np.full((32, 32, 3), 128, dtype=np.uint8)
-        self.objects_image["peg3"] = np.full((32, 32, 3), 255, dtype=np.uint8)
+            #self.objects_image[k] = cv2.rotate(self.objects_image[k], cv2.ROTATE_90_CLOCKWISE)
 
     def patch_task_image(self, obs):
         image = cv2.flip(obs.reshape(256, 256, 3), 0)

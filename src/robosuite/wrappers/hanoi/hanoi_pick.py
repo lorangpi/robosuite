@@ -7,8 +7,8 @@ from robosuite.utils.detector import HanoiDetector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
-class PickWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500, image_obs=True):
+class HanoiPickWrapper(gym.Wrapper):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=200, image_obs=True):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -38,16 +38,9 @@ class PickWrapper(gym.Wrapper):
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
-        self.obs_dim = 15#self.env.obs_dim + 3 # 1 extra dimensions for the object goal
+        self.obs_dim = self.env.obs_dim
+        self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
 
-        high = np.inf * np.ones(self.obs_dim)
-        low = -high
-        self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
-        if self.nulified_action_indexes != []:
-            self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
-        else:
-            self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
-            print("ACTION SPACE: ", self.action_space)
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
@@ -267,10 +260,10 @@ class PickWrapper(gym.Wrapper):
             obs, reward, terminated, info = self.env.step(action)
         self.env.render() if self.render_init else None
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-        success = state[f"grasped({self.obj_to_pick})"]
+        success = state[f"picked_up({self.obj_to_pick})"]
         info['is_sucess'] = success
         if success:
-            print("Object successfully grasped", state[f"grasped({self.obj_to_pick})"])
+            print("Object successfully picked up", state[f"picked_up({self.obj_to_pick})"])
         truncated = truncated or self.env.done
         terminated = terminated or success
         #obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]))
@@ -282,12 +275,21 @@ class PickWrapper(gym.Wrapper):
             pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
             gripper_pos = self.env.sim.data.body_xpos[self.env.gripper_body][2]
             dist = np.abs(gripper_pos - pick_pos)   
-            reward = -2 - (np.tanh(10.0 * dist))
+            reward = -4 - (np.tanh(10.0 * dist))
+        elif state[f"over(gripper,{self.obj_to_pick})"] and state[f"open(gripper)"]:
+            reward = -3.5
+        elif state[f"over(gripper,{self.obj_to_pick})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
+            reward = -3
+        elif state[f"grasped({self.obj_to_pick})"]:
+            z_target = self.env.table_offset[2] + 0.45
+            object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
+            z_dist = z_target - object_z_loc
+            reward = -1 - (np.tanh(10.0 * z_dist))
         else:
             pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.env.gripper_body][:2]
             dist = np.linalg.norm(gripper_pos - pick_pos)
-            reward = -3 - (np.tanh(10.0 * dist))
+            reward = -6 - (np.tanh(10.0 * dist))
         self.step_count += 1
         if self.step_count > self.horizon:
             terminated = True

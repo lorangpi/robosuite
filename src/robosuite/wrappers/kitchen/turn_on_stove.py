@@ -3,23 +3,24 @@ import gymnasium as gym
 #import gym
 import robosuite as suite
 import numpy as np
-from robosuite.utils.detector import NutAssemblyDetector
+from robosuite.utils.detector import KitchenDetector
 
 
-class AssemblyWrapper(gym.Wrapper):
-    def __init__(self, env, horizon=500):
+class TurnOnStoveWrapper(gym.Wrapper):
+    def __init__(self, env, render_init=False, horizon=100):
         # Run super method
         super().__init__(env=env)
         self.env = env
         self.use_gripper = True
-        self.detector = NutAssemblyDetector(self)
+        self.detector = KitchenDetector(self)
         self.step_count = 0
+        self.gripper_body = self.env.sim.model.body_name2id('gripper0_eef')
         self.horizon = horizon
 
         # set up spaces
         self.observation_space = self.env.observation_space
         self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
-        print("Action space: ", self.action_space)
+        #print("Action space: ", self.action_space)
 
     def reset(self, seed=None):
         # Reset the environment for the drop trask
@@ -57,13 +58,33 @@ class AssemblyWrapper(gym.Wrapper):
         except:
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-        success = state[f"on(roundnut,roundpeg)"] and state[f"on(squarenut,squarepeg)"]
+        success = state[f"stove_on()"]
         info['is_success'] = success
         truncated = truncated or self.env.done
         terminated = (terminated or success)
         self.step_count += 1
         if self.step_count > self.horizon:
-            print("Horizon reached within environment")
+            #print("Horizon reached within environment")
             terminated = True
         info["state"] = state
+        reward = 10 if success else self.staged_rewards(state)
         return obs, reward, terminated, truncated, info
+    
+    def staged_rewards(self, state):
+        """
+        Calculates staged rewards based on current physical states.
+        Stages consist of reaching over, doing down the button level
+        """
+        if state[f"over(gripper,button)"]:
+            pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id["button"])][2]
+            gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
+            dist = np.abs(gripper_pos - pick_pos)   
+            reward = -2 - (np.tanh(10.0 * dist))
+        elif state[f"over(gripper,button)"] and state[f"at_grab_level(gripper,button)"]:
+            reward = -0.5
+        else:
+            pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id["button"])][:2]
+            gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
+            dist = np.linalg.norm(gripper_pos - pick_pos)
+            reward = -3 - (np.tanh(10.0 * dist))
+        return reward

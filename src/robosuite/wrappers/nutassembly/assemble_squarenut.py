@@ -7,7 +7,7 @@ from robosuite.utils.detector import NutAssemblyDetector
 
 
 class AssembleSquareNutWrapper(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, horizon=100):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -16,6 +16,7 @@ class AssembleSquareNutWrapper(gym.Wrapper):
         self.step_count = 0
         self.obj_to_pick = "squarenut"
         self.gripper_body = self.env.sim.model.body_name2id('gripper0_eef')
+        self.horizon = horizon
 
         # set up spaces
         self.observation_space = self.env.observation_space
@@ -132,8 +133,7 @@ class AssembleSquareNutWrapper(gym.Wrapper):
             #print("Horizon reached within environment")
             terminated = True
         info["state"] = state
-        reward = max(self.staged_rewards(state))
-        reward += 10 if success else 0
+        reward = 10 if success else self.staged_rewards(state)
         #if success or self.step_count%10 == 0:
             #print(reward)
         return obs, reward, terminated, truncated, info
