@@ -7,8 +7,8 @@ from robosuite.utils.detector import HanoiDetector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
-class PlaceWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500, goal_type='random', image_obs=True):
+class HanoiPlaceWrapper(gym.Wrapper):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=200, goal_type='random', image_obs=True):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -39,16 +39,8 @@ class PlaceWrapper(gym.Wrapper):
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
         # set up observation space
-        self.obs_dim = 15#self.env.obs_dim + 3 # 1 extra dimensions for the object goal
-
-        high = np.inf * np.ones(self.obs_dim)
-        low = -high
-        self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
-        if self.nulified_action_indexes != []:
-            self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
-        else:
-            self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
-            print("ACTION SPACE: ", self.action_space)
+        self.obs_dim = self.env.obs_dim
+        self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
@@ -357,5 +349,5 @@ class PlaceWrapper(gym.Wrapper):
             terminated = True
         info["keypoint"] = self.keypoint
         info["state"] = state
-        print(self.obj_to_pick, self.place_to_drop)
+        #print(self.obj_to_pick, self.place_to_drop)
         return obs, reward, terminated, truncated, info
