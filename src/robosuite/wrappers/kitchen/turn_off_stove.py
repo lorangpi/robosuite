@@ -18,6 +18,7 @@ class TurnOffStoveWrapper(gym.Wrapper):
         self.horizon = horizon
         self.obj_to_pick = None
         self.place_to_drop = None
+        self.render_init = render_init
 
         # set up spaces
         self.observation_space = self.env.observation_space
