@@ -129,7 +129,7 @@ class AssemblePlaceWrapper(gym.Wrapper):
             action = np.asarray([0,0,0,1])
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
-            next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)ate
+            next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
             reset_step_count += 1
             if reset_step_count > 30:
                 return False, obs, info
