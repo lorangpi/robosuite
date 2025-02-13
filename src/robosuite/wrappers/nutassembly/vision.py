@@ -37,7 +37,7 @@ class AssembleVisionWrapper(gym.Wrapper):
         if self.env.place_to_drop is not None:
             image[0:32, 224:256] = self.objects_image[self.env.place_to_drop]
         # Flatten the image
-        obs = image.flatten()
+        obs = image
         return obs
 
     def reset(self, seed=None):
