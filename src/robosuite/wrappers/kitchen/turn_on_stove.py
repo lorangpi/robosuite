@@ -16,6 +16,8 @@ class TurnOnStoveWrapper(gym.Wrapper):
         self.step_count = 0
         self.gripper_body = self.env.sim.model.body_name2id('gripper0_eef')
         self.horizon = horizon
+        self.obj_to_pick = None
+        self.place_to_drop = None
 
         # set up spaces
         self.observation_space = self.env.observation_space
