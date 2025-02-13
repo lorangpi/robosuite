@@ -10,7 +10,9 @@ class KitchenVisionWrapper(gym.Wrapper):
         # Run super method
         super().__init__(env=env)
         self.env = env
-        self.observation_space = self.env.observation_space
+        # specify the observation space dtype for the vision wrapper
+        target_size = 256
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(target_size, target_size, 3), dtype=np.uint8)
         self.action_space = self.env.action_space
         # Load objects images
         base_path = os.path.join(os.path.dirname(__file__), '..', '..', 'models', 'assets', 'textures')
