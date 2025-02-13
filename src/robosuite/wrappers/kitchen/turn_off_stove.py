@@ -16,11 +16,25 @@ class TurnOffStoveWrapper(gym.Wrapper):
         self.step_count = 0
         self.gripper_body = self.env.sim.model.body_name2id('gripper0_eef')
         self.horizon = horizon
+        self.obj_to_pick = None
+        self.place_to_drop = None
 
         # set up spaces
         self.observation_space = self.env.observation_space
         self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
         #print("Action space: ", self.action_space)
+
+    def cap(self, eps, max_val=0.12, min_val=0.01):
+        """
+        Caps the displacement
+        """
+        # If the displacement is greater than the max value, cap it
+        if np.linalg.norm(eps) > max_val:
+            eps = eps / np.linalg.norm(eps) * max_val
+        # If the displacement is smaller than the min value, cap it
+        if np.linalg.norm(eps) < min_val:
+            eps = eps / np.linalg.norm(eps) * min_val
+        return eps
 
     def reset_button_on(self, state):
         """

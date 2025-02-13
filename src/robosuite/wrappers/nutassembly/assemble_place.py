@@ -26,6 +26,18 @@ class AssemblePlaceWrapper(gym.Wrapper):
         self.obs_dim = self.env.obs_dim
         self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
 
+    def cap(self, eps, max_val=0.12, min_val=0.01):
+        """
+        Caps the displacement
+        """
+        # If the displacement is greater than the max value, cap it
+        if np.linalg.norm(eps) > max_val:
+            eps = eps / np.linalg.norm(eps) * max_val
+        # If the displacement is smaller than the min value, cap it
+        if np.linalg.norm(eps) < min_val:
+            eps = eps / np.linalg.norm(eps) * min_val
+        return eps
+
     def reset_pick(self, state):
         """
         Transitons the environment to a state where the gripper is has picked the object
