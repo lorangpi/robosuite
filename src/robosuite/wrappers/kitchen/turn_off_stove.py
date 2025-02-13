@@ -45,7 +45,7 @@ class TurnOffStoveWrapper(gym.Wrapper):
         #print("\n\n\t\t---------------------PICK GOAL IS: ", goal)
         #print("\n\n")
 
-        goal_str = goal
+        goal_str = "button"
         goal = self.env.sim.model.body_name2id(self.detector.object_id[goal_str])
 
         goal_pos = self.env.sim.data.body_xpos[goal][:3]
