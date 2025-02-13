@@ -64,9 +64,6 @@ class TurnOffStoveWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="turn_on", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 500:
@@ -84,9 +81,6 @@ class TurnOffStoveWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="turn_on", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 400:
@@ -100,9 +94,6 @@ class TurnOffStoveWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="turn_on", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 50:
@@ -115,9 +106,6 @@ class TurnOffStoveWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="turn_on", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
 

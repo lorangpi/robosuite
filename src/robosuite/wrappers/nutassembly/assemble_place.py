@@ -62,9 +62,6 @@ class AssemblePlaceWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="pick", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 500:
@@ -90,9 +87,6 @@ class AssemblePlaceWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="pick", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 500:
@@ -106,9 +100,6 @@ class AssemblePlaceWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="pick", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 100:
@@ -126,9 +117,6 @@ class AssemblePlaceWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="pick", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 400:
@@ -141,11 +129,7 @@ class AssemblePlaceWrapper(gym.Wrapper):
             action = np.asarray([0,0,0,1])
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
-            next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="pick", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
-            obs, state = next_obs, next_state
+            next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)ate
             reset_step_count += 1
             if reset_step_count > 30:
                 return False, obs, info
@@ -159,9 +143,6 @@ class AssemblePlaceWrapper(gym.Wrapper):
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
-            self.state_memory = self.record_step(obs, action, next_obs, self.state_memory, next_state, action_step="place", goal=goal_str)
-            if self.state_memory is None:
-                return False, obs, info
             obs, state = next_obs, next_state
             reset_step_count += 1
             if reset_step_count > 300:
