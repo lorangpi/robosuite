@@ -77,8 +77,6 @@ class KitchenPlaceWrapper(gym.Wrapper):
             gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body])
             if goal_str == 'pot':
                 object_pos = np.asarray(self.env.sim.data.body_xpos[goal])+np.array([0, -0.09, 0])
-            elif self.args.env == "NutAssembly":
-                object_pos = np.asarray(self.env.sim.data.body_xpos[goal])+np.array([0, 0.05, 0])
             else:
                 object_pos = np.asarray(self.env.sim.data.body_xpos[goal])
             dist_xy_plan = object_pos[:2] - gripper_pos[:2]
