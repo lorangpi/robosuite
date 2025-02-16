@@ -293,6 +293,7 @@ class HanoiPickWrapper(gym.Wrapper):
         self.step_count += 1
         if self.step_count > self.horizon:
             terminated = True
+        info["is_success"] = success
         info["keypoint"] = self.keypoint
         info["state"] = state
         return obs, reward, terminated, truncated, info
