@@ -26,12 +26,16 @@ class TurnOnStoveWrapper(gym.Wrapper):
 
     def reset(self, seed=None):
         # Reset the environment for the drop trask
-        self.step_count = 0
         try:
             obs, info = self.env.reset()
         except:
             obs = self.env.reset()
             info = {}    
+        # Run 4 random actions to randomize the initial state
+        for _ in range(8):
+            action = self.action_space.sample()
+            obs, _, _, _, _ = self.env.step(action)
+        self.step_count = 0
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         info["state"] = state
         return obs, info
