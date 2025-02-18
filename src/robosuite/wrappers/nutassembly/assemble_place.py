@@ -120,13 +120,14 @@ class AssemblePlaceWrapper(gym.Wrapper):
         self.env.time_step = 0
 
         #print("Closing gripper...")
-        while not state['grasped({})'.format(goal_str)]:
+        #while not state['grasped({})'.format(goal_str)]:
+        for _ in range(10):
             action = np.asarray([0,0,0,1])
             next_obs, _, _, _, info  = self.env.step(action)
             self.env.render() if self.render_init else None
             next_state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
             reset_step_count += 1
-            if reset_step_count > 30:
+            if reset_step_count > 50:
                 return False, obs, info
         reset_step_count = 0
         self.env.time_step = 0
