@@ -12,7 +12,7 @@ class AssembleVisionWrapper(gym.Wrapper):
         self.env = env
         # specify the observation space dtype for the vision wrapper
         target_size = 128
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(target_size, target_size, 3), dtype=np.uint16)
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(target_size, target_size, 3), dtype=np.uint8)
         self.action_space = self.env.action_space
         # Load objects images
         base_path = os.path.join(os.path.dirname(__file__), '..', '..', 'models', 'assets', 'textures')
