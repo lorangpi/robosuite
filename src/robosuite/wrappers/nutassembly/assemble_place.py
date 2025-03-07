@@ -216,20 +216,20 @@ class AssemblePlaceWrapper(gym.Wrapper):
             drop_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.place_to_drop])][2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
             dist = np.linalg.norm(drop_pos - gripper_pos)
-            reward = -4 - (np.tanh(100.0 * dist))
+            reward = -4 - (np.tanh(50.0 * dist))
         elif state[f"picked_up({self.obj_to_pick})"]:
             drop_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.place_to_drop])][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             dist = np.linalg.norm(drop_pos - gripper_pos)
-            reward = -6 - (np.tanh(100.0 * dist))
+            reward = -6 - (np.tanh(50.0 * dist))
         elif not(state[f"grasped({self.obj_to_pick})"]):
             pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:3]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:3]
             dist = np.linalg.norm(pick_pos - gripper_pos)
-            reward = -20 - (np.tanh(100.0 * dist))
+            reward = -20 - (np.tanh(50.0 * dist))
         else:
             pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][2]
             table_pos = self.env.table_offset[2] + 0.45
             dist = np.linalg.norm(pick_pos - table_pos)
-            reward = -8 - (np.tanh(100.0 * dist))
+            reward = -8 - (np.tanh(50.0 * dist))
         return reward
