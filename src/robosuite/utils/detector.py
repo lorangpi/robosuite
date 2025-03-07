@@ -447,7 +447,7 @@ class HanoiDetector:
                     return False
         return True
     
-    def open(self, gripper):
+    def open(self, gripper, return_distance=False):
         if gripper == 'gripper':
             """
             Returns True if the gripper is open, False otherwise.
@@ -458,6 +458,8 @@ class HanoiDetector:
             right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
             #print(f'Gripper aperture: {aperture}')
+            if return_distance:
+                return aperture
             return bool(aperture > 0.13)
         else:
             return None
@@ -520,7 +522,7 @@ class HanoiDetector:
                 groundings[f'clear({obj})'] = clear_value
             
             # Check if the gripper is open
-            gripper_open_value = self.open('gripper')
+            gripper_open_value = self.open('gripper', return_distance=return_distance)
             if binary_to_float:
                 gripper_open_value = float(gripper_open_value)
             groundings['open_gripper(gripper)'] = gripper_open_value
@@ -612,7 +614,7 @@ class NutAssemblyDetector:
             else:
                 return bool(dist_z < 0.005)
     
-    def open(self, gripper):
+    def open(self, gripper, return_distance=False):
         if gripper == 'gripper':
             """
             Returns True if the gripper is open, False otherwise.
@@ -620,6 +622,8 @@ class NutAssemblyDetector:
             left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
             right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+            if return_distance:
+                return aperture
             return bool(aperture > 0.13)
         else:
             return None
@@ -708,7 +712,7 @@ class NutAssemblyDetector:
             #         groundings[f'above({obj},{peg})'] = on_value
 
             # Check if the gripper is open
-            gripper_open_value = self.open('gripper')
+            gripper_open_value = self.open('gripper', return_distance=return_distance)
             if binary_to_float:
                 gripper_open_value = float(gripper_open_value)
             groundings['open_gripper(gripper)'] = gripper_open_value
@@ -815,7 +819,7 @@ class KitchenDetector:
             else:
                 return bool(dist_z < 0.005)
     
-    def open(self, gripper):
+    def open(self, gripper, return_distance=False):
         if gripper == 'gripper':
             """
             Returns True if the gripper is open, False otherwise.
@@ -823,6 +827,8 @@ class KitchenDetector:
             left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
             right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+            if return_distance:
+                return aperture
             return bool(aperture > 0.13)
         else:
             return None
@@ -897,7 +903,7 @@ class KitchenDetector:
                         groundings[f'on({obj},{obj2})'] = on_value
 
             # Check if the gripper is open
-            gripper_open_value = self.open('gripper')
+            gripper_open_value = self.open('gripper', return_distance=return_distance)
             if binary_to_float:
                 gripper_open_value = float(gripper_open_value)
             groundings['open_gripper(gripper)'] = gripper_open_value
