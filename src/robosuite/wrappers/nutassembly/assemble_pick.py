@@ -85,7 +85,7 @@ class AssemblePickWrapper(gym.Wrapper):
             # gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
             # dist = np.abs(gripper_pos - pick_pos)   
             dist = np.abs(distances[f"grasped({self.obj_to_pick})"])
-            reward = -4 - (np.tanh(10.0 * dist))
+            reward = -4 - (np.tanh(100.0 * dist))
         elif state[f"over(gripper,{self.obj_to_pick})"] and state[f"open(gripper)"]:
             reward = -3.5
         elif state[f"over(gripper,{self.obj_to_pick})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
@@ -102,5 +102,5 @@ class AssemblePickWrapper(gym.Wrapper):
             #dist = np.linalg.norm(gripper_pos - pick_pos)
             obj_over = "pot_handle" if self.obj_to_pick == "pot" else self.obj_to_pick
             dist = distances[f"over(gripper,{obj_over})"]
-            reward = -6 - (np.tanh(10.0 * dist))
+            reward = -6 - (np.tanh(100.0 * dist))
         return reward
