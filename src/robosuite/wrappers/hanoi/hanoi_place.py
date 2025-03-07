@@ -198,7 +198,6 @@ class HanoiPlaceWrapper(gym.Wrapper):
 
     def reset(self, seed=None):
         # Reset the environment for the drop trask
-        self.picked_up = False
         self.step_count = 1
         reset = False
         while not reset:
@@ -324,24 +323,22 @@ class HanoiPlaceWrapper(gym.Wrapper):
             drop_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
             dist = np.linalg.norm(drop_pos - gripper_pos)
-            reward = -4 - (np.tanh(10.0 * dist))
-        elif state[f"picked_up({self.obj_to_pick})"] or self.picked_up:
+            reward = -4 - (np.tanh(100.0 * dist))
+        elif state[f"picked_up({self.obj_to_pick})"]:
             drop_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             dist = np.linalg.norm(drop_pos - gripper_pos)
-            reward = -6 - (np.tanh(10.0 * dist))
-            self.picked_up = True
+            reward = -6 - (np.tanh(100.0 * dist))
         elif not(state[f"grasped({self.obj_to_pick})"]):
-            self.picked_up = False
             pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:3]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:3]
             dist = np.linalg.norm(pick_pos - gripper_pos)
-            reward = -20 - (np.tanh(10.0 * dist))
+            reward = -20 - (np.tanh(100.0 * dist))
         else:
             pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
             table_pos = self.env.table_offset[2] + 0.45
             dist = np.linalg.norm(pick_pos - table_pos)
-            reward = -8 - (np.tanh(10.0 * dist))
+            reward = -8 - (np.tanh(100.0 * dist))
         
 
         self.step_count += 1
