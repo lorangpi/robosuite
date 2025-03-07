@@ -86,7 +86,7 @@ class KitchenPickWrapper(gym.Wrapper):
             # gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
             # dist = np.abs(gripper_pos - pick_pos)   
             dist = np.abs(distances[f"grasped({self.obj_to_pick})"])
-            reward = -4 - (np.tanh(100.0 * dist))
+            reward = -4 - ((np.tanh(50.0 * dist)))
         elif state[f"over(gripper,{obj_over})"] and state[f"open(gripper)"]:
             reward = -3.5
         elif state[f"over(gripper,{obj_over})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
@@ -96,11 +96,11 @@ class KitchenPickWrapper(gym.Wrapper):
             #object_z_loc = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][2]
             #z_dist = z_target - object_z_loc
             z_dist = distances[f"picked_up({self.obj_to_pick})"]
-            reward = -1 - (np.tanh(10.0 * z_dist))
+            reward = -1 - (np.tanh(50.0 * z_dist))
         else:
             #pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:2]
             #gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             #dist = np.linalg.norm(gripper_pos - pick_pos)
             dist = distances[f"over(gripper,{obj_over})"]
-            reward = -6 - (np.tanh(100.0 * dist))
+            reward = -6 - ((np.tanh(50.0 * dist)))
         return reward
