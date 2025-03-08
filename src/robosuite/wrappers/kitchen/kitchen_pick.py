@@ -83,11 +83,11 @@ class KitchenPickWrapper(gym.Wrapper):
         obj_over = "pot_handle" if self.obj_to_pick == "pot" else self.obj_to_pick
         if state[f"grasped({self.obj_to_pick})"]:
             z_dist = distances[f"picked_up({self.obj_to_pick})"]
-            reward = -1 - np.tanh(100.0 * z_dist)
+            reward = -1 - np.tanh(20.0 * z_dist)
         elif state[f"over(gripper,{obj_over})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"] and state[f"open_gripper(gripper)"]:
             reward = -3
         elif state[f"over(gripper,{obj_over})"] and state[f"open_gripper(gripper)"]:
-            reward = -3 - np.tanh(100.0 * distances[f"at_grab_level(gripper,{self.obj_to_pick})"])
+            reward = -3 - np.tanh(20.0 * distances[f"at_grab_level(gripper,{self.obj_to_pick})"])
         elif state[f"over(gripper,{obj_over})"]:
             aperture = distances[f"open_gripper(gripper)"]
             reward = -5 + aperture
@@ -96,5 +96,5 @@ class KitchenPickWrapper(gym.Wrapper):
             #gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             #dist = np.linalg.norm(gripper_pos - pick_pos)
             dist = distances[f"over(gripper,{obj_over})"]
-            reward = -6 - (np.tanh(50.0 * dist))
+            reward = -6 - (np.tanh(10.0 * dist))
         return reward
