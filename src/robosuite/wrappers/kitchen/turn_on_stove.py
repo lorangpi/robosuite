@@ -87,10 +87,10 @@ class TurnOnStoveWrapper(gym.Wrapper):
             pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id["button"])][2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
             dist = np.abs(gripper_pos - pick_pos)   
-            reward = -2 - (np.tanh(100.0 * dist))
+            reward = -2 - (np.tanh(20.0 * dist))
         else:
             pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id["button"])][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             dist = np.linalg.norm(gripper_pos - pick_pos)
-            reward = -3 - (np.tanh(50.0 * dist))
+            reward = -3 - (np.tanh(10.0 * dist))
         return reward

@@ -276,7 +276,7 @@ class HanoiPickWrapper(gym.Wrapper):
             z_target = self.env.table_offset[2] + 0.45
             object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
             z_dist = z_target - object_z_loc
-            reward = -1 - (np.tanh(10 * z_dist))
+            reward = -1 - (np.tanh(20 * z_dist))
         elif state[f"over(gripper,{self.obj_to_pick})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"] and state[f"open_gripper(gripper)"]:
             reward = -2
         elif state[f"over(gripper,{self.obj_to_pick})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
@@ -285,7 +285,7 @@ class HanoiPickWrapper(gym.Wrapper):
             pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
             gripper_pos = self.env.sim.data.body_xpos[self.env.gripper_body][2]
             dist = np.abs(gripper_pos - pick_pos)   
-            reward = -3 - (np.tanh(10 * dist))
+            reward = -3 - (np.tanh(20 * dist))
         elif state[f"over(gripper,{self.obj_to_pick})"]:
             aperture = distances[f"open_gripper(gripper)"]
             reward = -5 + aperture
