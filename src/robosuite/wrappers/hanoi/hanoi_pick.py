@@ -271,7 +271,7 @@ class HanoiPickWrapper(gym.Wrapper):
         if not self.image_obs:
             obs = self.filter_obs(obs)
         if success:
-            reward = 10
+            reward = 1000
         elif state[f"grasped({self.obj_to_pick})"]:
             z_target = self.env.table_offset[2] + 0.45
             object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]

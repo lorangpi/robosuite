@@ -160,7 +160,7 @@ class TurnOffStoveWrapper(gym.Wrapper):
             #print("Horizon reached within environment")
             terminated = True
         info["state"] = state
-        reward = 10 if success else self.staged_rewards(state)
+        reward = 1000 if success else self.staged_rewards(state)
         return obs, reward, terminated, truncated, info
     
     def staged_rewards(self, state):
