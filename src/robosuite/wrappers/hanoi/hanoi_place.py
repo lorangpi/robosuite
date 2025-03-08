@@ -316,7 +316,7 @@ class HanoiPlaceWrapper(gym.Wrapper):
         if not self.image_obs:
             obs = self.filter_obs(obs)
         if success:
-            reward = 10
+            reward = 1000
         elif state[f"on({self.obj_to_pick},{self.place_to_drop})"]:
             reward = -2
         elif state[f"over(gripper,{self.place_to_drop})"]:
