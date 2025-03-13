@@ -145,12 +145,12 @@ class TurnOffStoveWrapper(gym.Wrapper):
 
     def step(self, action):
         truncated = False
-        info['is_success'] = False
         action = self.map_gripper(action)
         try:
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
             obs, reward, terminated, info = self.env.step(action)
+        info["is_success"] = False
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         # Get reward
         reward = self.staged_rewards(state)
