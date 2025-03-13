@@ -7,7 +7,7 @@ from robosuite.utils.detector import KitchenDetector
 
 
 class TurnOffStoveWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, horizon=100):
+    def __init__(self, env, render_init=False, horizon=100, image_obs=True):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -171,7 +171,6 @@ class TurnOffStoveWrapper(gym.Wrapper):
         if self.step_count > self.horizon:
             terminated = True
         
-        info["keypoint"] = self.keypoint
         info["state"] = state
 
         return obs, reward, terminated, truncated, info
