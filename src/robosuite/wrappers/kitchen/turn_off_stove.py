@@ -125,6 +125,7 @@ class TurnOffStoveWrapper(gym.Wrapper):
             state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
             success_reset, obs, info = self.reset_button_on(state)
         info["state"] = state
+        self.success_steps = 0
         return obs, info
 
     def map_gripper(self, action):

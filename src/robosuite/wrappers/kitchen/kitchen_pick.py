@@ -36,6 +36,7 @@ class KitchenPickWrapper(gym.Wrapper):
             info = {}    
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         info["state"] = state
+        self.success_steps = 0
         return obs, info
 
     def map_gripper(self, action):
