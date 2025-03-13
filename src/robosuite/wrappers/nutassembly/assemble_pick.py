@@ -56,45 +56,93 @@ class AssemblePickWrapper(gym.Wrapper):
 
     def step(self, action):
         truncated = False
+        info["is_success"] = False
         action = self.map_gripper(action)
         try:
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        # Get reward
+        reward = self.staged_rewards(state)
+        # Check if the object has been successfully picked up
         success = state[f"picked_up({self.obj_to_pick})"]
-        info['is_success'] = success
+        if success:
+            self.success_steps += 1
+            if self.success_steps >= 5:  # Require 5 steps of stability
+                print("Object successfully picked up", state[f"picked_up({self.obj_to_pick})"])
+                info['is_sucess'] = True
+                terminated = True
+                reward += 1000 - self.step_count*5
+        
         truncated = truncated or self.env.done
-        terminated = (terminated or success)
+
         self.step_count += 1
         if self.step_count > self.horizon:
-            #print("Horizon reached within environment")
             terminated = True
+
+        info["keypoint"] = self.keypoint
         info["state"] = state
-        reward = 1000 if success else self.staged_rewards(state)
+
         return obs, reward, terminated, truncated, info
-    
+
     def staged_rewards(self, state):
-        """
-        Calculates staged rewards based on current physical states.
-        Stages consist of reaching over, doing down the button level
-        """
         distances = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True)
         obj_over = "pot_handle" if self.obj_to_pick == "pot" else self.obj_to_pick
+
+        MAX_APPROACH_DIST = 0.5
+        MAX_GRAB_DIST = 0.2
+        MAX_PICKED_DIST = 0.1
+
+        reward = 0  # Start with a neutral baseline
+
+        # *** Stage 1: Success (Final Goal) ***
         if state[f"grasped({self.obj_to_pick})"]:
-            z_dist = distances[f"picked_up({self.obj_to_pick})"]
-            reward = -1 - np.tanh(20.0 * z_dist)
-        elif state[f"over(gripper,{obj_over})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"] and state[f"open_gripper(gripper)"]:
-            reward = -3
-        elif state[f"over(gripper,{obj_over})"] and state[f"open_gripper(gripper)"]:
-            reward = -3 - np.tanh(20.0 * distances[f"at_grab_level(gripper,{self.obj_to_pick})"])
-        elif state[f"over(gripper,{obj_over})"]:
-            aperture = distances[f"open_gripper(gripper)"]
-            reward = -5 + aperture
+            z_target = self.env.table_offset[2] + 0.45
+            object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
+            z_dist = z_target - object_z_loc
+            reward += 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Big boost for lifting!
+
+        # *** Stage 2: Gripper at Correct Grab Level ***
+        elif state[f"over(gripper,{obj_over})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
+            grab_level_dist = distances[f"at_grab_level(gripper,{self.obj_to_pick})"]
+            reward += 50 * (1.0 - np.clip(grab_level_dist / MAX_GRAB_DIST, 0, 1))  # Reward being at grab level
+
+            if state[f"open_gripper(gripper)"]:
+                reward += 20  # Encourage keeping gripper open before grasping
+
+        # *** Stage 3: Getting Near the Object (Approaching) ***
         else:
-            #pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:2]
-            #gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
-            #dist = np.linalg.norm(gripper_pos - pick_pos)
-            dist = distances[f"over(gripper,{obj_over})"]
-            reward = -6 - (np.tanh(10.0 * dist))
+            approach_dist = distances[f"over(gripper,{obj_over})"]
+            reward += 10 * (1.0 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1))  # Reward approaching smoothly
+
         return reward
+
+    # def staged_rewards(self, state):
+    #     """
+    #     Calculates staged rewards based on current physical states.
+    #     Stages consist of reaching over, doing down the button level
+    #     """
+    #     MAX_APPROACH_DIST = 0.5   # maximum distance for approaching the object
+    #     MAX_GRAB_DIST = 0.2       # maximum distance considered for grab-level alignment
+    #     MAX_PICKED_DIST = 0.1     # maximum distance for the picked-up stage
+    #     distances = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True)
+    #     obj_over = "pot_handle" if self.obj_to_pick == "pot" else self.obj_to_pick
+    #     if state[f"grasped({self.obj_to_pick})"]:
+    #         z_dist = distances[f"picked_up({self.obj_to_pick})"]
+    #         reward = 4 - np.clip(dist/MAX_PICKED_DIST, 0, 1)#np.tanh(20.0 * z_dist)
+    #     elif state[f"over(gripper,{obj_over})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"] and state[f"open_gripper(gripper)"]:
+    #         reward = 3
+    #     elif state[f"over(gripper,{obj_over})"] and state[f"open_gripper(gripper)"]:
+    #         dist = distances[f"at_grab_level(gripper,{self.obj_to_pick})"]
+    #         reward = 2 - np.clip(dist/MAX_GRAB_DIST, 0, 1)#np.tanh(20.0 * distances[f"at_grab_level(gripper,{self.obj_to_pick})"])
+    #     elif state[f"over(gripper,{obj_over})"]:
+    #         aperture = distances[f"open_gripper(gripper)"]
+    #         reward = aperture
+    #     else:
+    #         #pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:2]
+    #         #gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
+    #         #dist = np.linalg.norm(gripper_pos - pick_pos)
+    #         dist = distances[f"over(gripper,{obj_over})"]
+    #         reward = - np.clip(dist/MAX_APPROACH_DIST, 0, 1)#(np.tanh(10.0 * dist))
+    #     return reward

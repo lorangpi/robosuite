@@ -34,10 +34,12 @@ class HanoiStateWrapper(gym.Wrapper):
         
         obj_to_pick_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.env.obj_to_pick]][:3])
         goal_drop = self.env.place_to_drop
+        #print("Object to pick: ", self.env.obj_to_pick, " Place to drop: ", goal_drop)
         place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[goal_drop]][:3])
         if 'peg' in self.env.place_to_drop:
             place_to_drop_pos = place_to_drop_pos - np.array([0.1, 0.04, 0])
         obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
+        #obs = np.concatenate([gripper_pos-obj_to_pick_pos, [aperture]])
         return obs
 
     def reset(self, seed=None):
