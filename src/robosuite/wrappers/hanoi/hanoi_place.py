@@ -294,7 +294,6 @@ class HanoiPlaceWrapper(gym.Wrapper):
         return action
 
     def step(self, action):
-        info['is_success'] = False
         # if self.nulified_action_indexes is not empty, fill the action with zeros at the indexes
         if self.nulified_action_indexes != []:
             for index in self.nulified_action_indexes:
@@ -305,6 +304,7 @@ class HanoiPlaceWrapper(gym.Wrapper):
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
             obs, reward, terminated, info = self.env.step(action)
+        info["is_success"] = False
         self.env.render() if self.render_init else None
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         
