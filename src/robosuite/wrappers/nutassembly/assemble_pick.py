@@ -62,6 +62,7 @@ class AssemblePickWrapper(gym.Wrapper):
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
             obs, reward, terminated, info = self.env.step(action)
+        terminated = bool(terminated)
         info["is_success"] = False
         state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
         # Get reward
@@ -98,9 +99,7 @@ class AssemblePickWrapper(gym.Wrapper):
 
         # *** Stage 1: Success (Final Goal) ***
         if state[f"grasped({self.obj_to_pick})"]:
-            z_target = self.env.table_offset[2] + 0.45
-            object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
-            z_dist = z_target - object_z_loc
+            z_dist = distances[f"picked_up({self.obj_to_pick})"]
             reward += 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Big boost for lifting!
 
         # *** Stage 2: Gripper at Correct Grab Level ***
