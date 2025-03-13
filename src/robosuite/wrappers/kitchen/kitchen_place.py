@@ -170,6 +170,7 @@ class KitchenPlaceWrapper(gym.Wrapper):
             state = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
             success_reset, obs, info = self.reset_pick(state)
         info["state"] = state
+        self.success_steps = 0
         return obs, info
 
     def map_gripper(self, action):
@@ -235,8 +236,10 @@ class KitchenPlaceWrapper(gym.Wrapper):
             reward += 100
 
         # *** Stage 2: Gripper Over Target and at Drop Level ***
-        elif state[f"over(gripper,{self.place_to_drop})"] and state[f"at_grab_level(gripper,{self.place_to_drop})"]:
-            drop_level_dist = distances[f"at_grab_level(gripper,{self.place_to_drop})"]
+        elif state[f"over(gripper,{self.place_to_drop})"]:
+            drop_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.place_to_drop])][2]
+            gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
+            drop_level_dist = np.linalg.norm(drop_pos - gripper_pos)
             reward += 50 * (1.0 - np.clip(drop_level_dist / MAX_DROP_DIST, 0, 1))  # Reward reaching drop level
 
             if state[f"grasped({self.obj_to_pick})"]:

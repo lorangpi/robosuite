@@ -197,6 +197,7 @@ class HanoiPickWrapper(gym.Wrapper):
         self.keypoint = np.concatenate([goal_pos, goal_quat])
         info["keypoint"] = self.keypoint
         info["state"] = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=False)
+        self.success_steps = 0
         return obs, info
 
     def filter_obs_proprio(self, obs):
