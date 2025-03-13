@@ -82,7 +82,6 @@ class AssemblePickWrapper(gym.Wrapper):
         if self.step_count > self.horizon:
             terminated = True
 
-        info["keypoint"] = self.keypoint
         info["state"] = state
 
         return obs, reward, terminated, truncated, info
