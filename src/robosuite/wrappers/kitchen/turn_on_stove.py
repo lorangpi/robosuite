@@ -76,7 +76,7 @@ class TurnOnStoveWrapper(gym.Wrapper):
             self.success_steps += 1
             if self.success_steps >= 5:  # Require 5 steps of stability
                 print("Stove successfully turned off")
-                info['is_sucess'] = True
+                info['is_success'] = True
                 terminated = True
                 reward += 1000 - self.step_count*5
         
