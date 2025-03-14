@@ -319,7 +319,7 @@ class HanoiPlaceWrapper(gym.Wrapper):
             self.success_steps += 1
             if self.success_steps >= 5:  # Require 5 steps of stability
                 print("Object successfully placed", state[f"on({self.obj_to_pick},{self.place_to_drop})"])
-                info['is_sucess'] = True
+                info['is_success'] = True
                 terminated = True
                 reward += 1000 - self.step_count*5
         
