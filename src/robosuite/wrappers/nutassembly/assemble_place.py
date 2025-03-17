@@ -231,8 +231,8 @@ class AssemblePlaceWrapper(gym.Wrapper):
 
         # *** Stage 1: Success (Final Goal - Object Placed) ***
         if state[f"on({self.obj_to_pick},{self.place_to_drop})"]:
-            drop_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][2]
-            object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
+            drop_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.place_to_drop])][2]
+            object_z_loc = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][2]
             z_dist = np.abs(drop_pos - object_z_loc)
             reward = 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Bonus for precise placement
 
@@ -259,7 +259,7 @@ class AssemblePlaceWrapper(gym.Wrapper):
             reward = np.clip(dist / MAX_PICKED_DIST, 0, 1)  # Penalize not approaching drop location
         
         else:
-            pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:2]
+            pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             dist = np.linalg.norm(pick_pos - gripper_pos)
             reward = -10 * np.clip(dist / MAX_APPROACH_DIST, 0, 1) # Penalize not grasping the object
