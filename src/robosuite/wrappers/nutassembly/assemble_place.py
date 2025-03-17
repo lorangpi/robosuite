@@ -203,12 +203,12 @@ class AssemblePlaceWrapper(gym.Wrapper):
         success = state[f"on({self.obj_to_pick},{self.place_to_drop})"] and not(state[f"grasped({self.obj_to_pick})"])
         if success:
             self.success_steps += 1
-            reward = 1000 - self.step_count*5
+            reward = 10*self.horizon - 5*min(self.step_count,self.horizon)
             if self.success_steps >= 5:  # Require 5 steps of stability
                 print("Object successfully placed", state[f"on({self.obj_to_pick},{self.place_to_drop})"])
                 info['is_success'] = True
                 terminated = True
-                reward = 2000 - self.step_count*10
+                reward = 30*self.horizon - 10*min(self.step_count,self.horizon)
         
         truncated = truncated or self.env.done
 
@@ -223,18 +223,15 @@ class AssemblePlaceWrapper(gym.Wrapper):
     def staged_rewards(self, state):
         distances = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True)
 
-        MAX_APPROACH_DIST = 0.1
-        MAX_DROP_DIST = 0.05
-        MAX_PICKED_DIST = 0.02
+        MAX_APPROACH_DIST = 0.2
+        MAX_DROP_DIST = 0.32
+        MAX_PICKED_DIST = 0.05
 
         reward = 0  # Neutral baseline
 
         # *** Stage 1: Success (Final Goal - Object Placed) ***
         if state[f"on({self.obj_to_pick},{self.place_to_drop})"]:
-            drop_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.place_to_drop])][2]
-            object_z_loc = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][2]
-            z_dist = np.abs(drop_pos - object_z_loc)
-            reward = 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Bonus for precise placement
+            reward = 100
 
         # *** Stage 2: Gripper Over Target and at Drop Level ***
         elif state[f"over(gripper,{self.place_to_drop})"]:
@@ -256,7 +253,7 @@ class AssemblePlaceWrapper(gym.Wrapper):
         # *** Stage 4: Still Holding Object but Not Moving Toward Goal ***
         elif state[f"grasped({self.obj_to_pick})"]:
             dist = distances[f"picked_up({self.obj_to_pick})"]
-            reward = np.clip(dist / MAX_PICKED_DIST, 0, 1)  # Penalize not approaching drop location
+            reward = 1 - np.clip(dist / MAX_PICKED_DIST, 0, 1)  # Penalize not approaching drop location
         
         else:
             pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:2]
