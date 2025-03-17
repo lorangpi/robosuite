@@ -241,7 +241,7 @@ class AssemblePlaceWrapper(gym.Wrapper):
             drop_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.place_to_drop])][2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][2]
             drop_level_dist = np.linalg.norm(drop_pos - gripper_pos)
-            reward = 50 + 50 * (1.0 - np.clip(drop_level_dist / MAX_DROP_DIST, 0, 1))  # Reward reaching drop level
+            reward = 50 + 30 * (1.0 - np.clip(drop_level_dist / MAX_DROP_DIST, 0, 1))  # Reward reaching drop level
 
             if state[f"grasped({self.obj_to_pick})"]:
                 reward += 20  # Encourage holding the object before releasing
