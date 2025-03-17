@@ -161,11 +161,12 @@ class TurnOffStoveWrapper(gym.Wrapper):
         success = not(state[f"stove_on()"])
         if success:
             self.success_steps += 1
+            reward = 10*self.horizon - 5*min(self.step_count,self.horizon)
             if self.success_steps >= 5:  # Require 5 steps of stability
                 print("Stove successfully turned off")
                 info['is_success'] = True
                 terminated = True
-                reward += 1000 - self.step_count*5
+                reward = 30*self.horizon - 10*min(self.step_count,self.horizon)
         
         truncated = truncated or self.env.done
 

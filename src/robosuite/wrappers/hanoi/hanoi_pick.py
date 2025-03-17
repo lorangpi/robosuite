@@ -271,12 +271,12 @@ class HanoiPickWrapper(gym.Wrapper):
         success = state[f"picked_up({self.obj_to_pick})"]
         if success:
             self.success_steps += 1
-            reward = 1000 - self.step_count*5
+            reward = 10*self.horizon - 5*min(self.step_count,self.horizon)
             if self.success_steps >= 5:  # Require 5 steps of stability
                 print("Object successfully picked up", state[f"picked_up({self.obj_to_pick})"])
                 info['is_success'] = True
                 terminated = True
-                reward = 2000 - self.step_count*10
+                reward = 30*self.horizon - 10*min(self.step_count,self.horizon)
         
         truncated = truncated or self.env.done
 
@@ -297,8 +297,8 @@ class HanoiPickWrapper(gym.Wrapper):
         obj_over = "pot_handle" if self.obj_to_pick == "pot" else self.obj_to_pick
 
         MAX_APPROACH_DIST = 0.1
-        MAX_GRAB_DIST = 0.05
-        MAX_PICKED_DIST = 0.02
+        MAX_GRAB_DIST = 0.01
+        MAX_PICKED_DIST = 0.3
 
         reward = 0  # Start with a neutral baseline
 
@@ -307,7 +307,7 @@ class HanoiPickWrapper(gym.Wrapper):
             # check if no other object is grasped by counting the number of objects grasped
             counter_grasped = {k: state[k] for k in state if 'grasped' in k and state[k]}
             if len(counter_grasped) == 1:
-                z_target = self.env.table_offset[2] + 0.45
+                z_target = self.env.table_offset[2] + 0.36
                 object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
                 z_dist = z_target - object_z_loc
                 reward = 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Big boost for lifting!
@@ -315,9 +315,12 @@ class HanoiPickWrapper(gym.Wrapper):
                 reward = -10
 
         # *** Stage 2: Gripper at Correct Grab Level ***
-        elif state[f"over(gripper,{obj_over})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
-            grab_level_dist = distances[f"at_grab_level(gripper,{self.obj_to_pick})"]
-            reward = 10 + 30 * (1.0 - np.clip(grab_level_dist / MAX_GRAB_DIST, 0, 1))  # Reward being at grab level
+        elif state[f"over(gripper,{obj_over})"]:
+            if state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
+                reward = 50
+            else:
+                grab_level_dist = distances[f"at_grab_level(gripper,{self.obj_to_pick})"]
+                reward = 10 + 30 * (1.0 - np.clip(grab_level_dist / MAX_GRAB_DIST, 0, 1))  # Reward being at grab level
 
             if state[f"open_gripper(gripper)"]:
                 reward += 20  # Encourage keeping gripper open before grasping
@@ -325,7 +328,9 @@ class HanoiPickWrapper(gym.Wrapper):
         # *** Stage 3: Getting Near the Object (Approaching) ***
         else:
             approach_dist = distances[f"over(gripper,{obj_over})"]
-            reward = 2 * (1.0 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1))  # Reward approaching smoothly
+            reward = -1 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1)  # Reward approaching smoothly
+            if state[f"open_gripper(gripper)"]:
+                reward += 1  # Encourage keeping gripper open before grasping
 
         return reward
 

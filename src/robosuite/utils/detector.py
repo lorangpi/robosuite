@@ -181,7 +181,7 @@ class PickPlaceDetector:
             if return_distance:
                 return dist_xy
             else:
-                return bool(dist_xy < 0.05)
+                return bool(dist_xy < 0.1)#bool(dist_xy < 0.05)
         else:
             return None
 
@@ -798,7 +798,7 @@ class KitchenDetector:
             if return_distance:
                 return dist_xy
             elif "pot" in obj:
-                return bool(dist_xy < 0.005)# and bool(dist_x < 0.02)
+                return bool(dist_xy < 0.02)#bool(dist_xy < 0.005)# and bool(dist_x < 0.02)
             elif "stove" in obj or "serving" in obj:
                 return bool(dist_xy < 0.05)#return bool(dist_xy < 0.004)
             else:
@@ -835,7 +835,7 @@ class KitchenDetector:
     
     def picked_up(self, obj, return_distance=False):
         active_obj = self.env.sim.model.body_name2id(self.object_id[obj])
-        z_target = self.env.table_offset[2] + 0.45
+        z_target = self.env.table_offset[2] + 0.35
         object_z_loc = self.env.sim.data.body_xpos[active_obj][2]
         z_dist = z_target - object_z_loc
         if return_distance:
