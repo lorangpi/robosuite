@@ -341,9 +341,9 @@ class HanoiPlaceWrapper(gym.Wrapper):
     def staged_rewards(self, state):
         distances = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True)
 
-        MAX_APPROACH_DIST = 0.5
-        MAX_DROP_DIST = 0.2
-        MAX_PICKED_DIST = 0.1
+        MAX_APPROACH_DIST = 0.1
+        MAX_DROP_DIST = 0.05
+        MAX_PICKED_DIST = 0.02
 
         reward = 0  # Neutral baseline
 

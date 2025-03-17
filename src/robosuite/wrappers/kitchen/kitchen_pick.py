@@ -92,9 +92,9 @@ class KitchenPickWrapper(gym.Wrapper):
         distances = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True)
         obj_over = "pot_handle" if self.obj_to_pick == "pot" else self.obj_to_pick
 
-        MAX_APPROACH_DIST = 0.5
-        MAX_GRAB_DIST = 0.2
-        MAX_PICKED_DIST = 0.1
+        MAX_APPROACH_DIST = 0.1
+        MAX_GRAB_DIST = 0.05
+        MAX_PICKED_DIST = 0.02
 
         reward = 0  # Start with a neutral baseline
 
@@ -114,7 +114,7 @@ class KitchenPickWrapper(gym.Wrapper):
         # *** Stage 3: Getting Near the Object (Approaching) ***
         else:
             approach_dist = distances[f"over(gripper,{obj_over})"]
-            reward = -1 * (1.0 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1))  # Reward approaching smoothly
+            reward = 2 * (1.0 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1))  # Reward approaching smoothly
 
         return reward
 
