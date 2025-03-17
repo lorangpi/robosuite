@@ -271,11 +271,12 @@ class HanoiPickWrapper(gym.Wrapper):
         success = state[f"picked_up({self.obj_to_pick})"]
         if success:
             self.success_steps += 1
+            reward = 1000 - self.step_count*5
             if self.success_steps >= 5:  # Require 5 steps of stability
                 print("Object successfully picked up", state[f"picked_up({self.obj_to_pick})"])
                 info['is_success'] = True
                 terminated = True
-                reward += 1000 - self.step_count*5
+                reward = 2000 - self.step_count*10
         
         truncated = truncated or self.env.done
 
@@ -306,12 +307,12 @@ class HanoiPickWrapper(gym.Wrapper):
             z_target = self.env.table_offset[2] + 0.45
             object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
             z_dist = z_target - object_z_loc
-            reward += 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Big boost for lifting!
+            reward = 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Big boost for lifting!
 
         # *** Stage 2: Gripper at Correct Grab Level ***
         elif state[f"over(gripper,{obj_over})"] and state[f"at_grab_level(gripper,{self.obj_to_pick})"]:
             grab_level_dist = distances[f"at_grab_level(gripper,{self.obj_to_pick})"]
-            reward += 50 * (1.0 - np.clip(grab_level_dist / MAX_GRAB_DIST, 0, 1))  # Reward being at grab level
+            reward = 50 + 50 * (1.0 - np.clip(grab_level_dist / MAX_GRAB_DIST, 0, 1))  # Reward being at grab level
 
             if state[f"open_gripper(gripper)"]:
                 reward += 20  # Encourage keeping gripper open before grasping
@@ -319,7 +320,7 @@ class HanoiPickWrapper(gym.Wrapper):
         # *** Stage 3: Getting Near the Object (Approaching) ***
         else:
             approach_dist = distances[f"over(gripper,{obj_over})"]
-            reward += 10 * (1.0 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1))  # Reward approaching smoothly
+            reward = 10 * (1.0 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1))  # Reward approaching smoothly
 
         return reward
 
