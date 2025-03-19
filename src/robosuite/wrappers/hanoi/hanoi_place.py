@@ -376,7 +376,7 @@ class HanoiPlaceWrapper(gym.Wrapper):
             pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             dist = np.linalg.norm(pick_pos - gripper_pos)
-            reward = - 10 * np.clip(dist / MAX_APPROACH_DIST, 0, 1)  # Penalize not approaching drop location
+            reward = -10 - 10 * np.clip(dist / MAX_APPROACH_DIST, 0, 1)  # Penalize not approaching drop location
 
         return reward
 

@@ -99,7 +99,7 @@ class KitchenPickWrapper(gym.Wrapper):
         reward = 0  # Start with a neutral baseline
 
         # *** Stage 1: Success (Final Goal) ***
-        if state[f"grasped({self.obj_to_pick})"] or distances[f"picked_up({self.obj_to_pick})"] <= 0.0425:
+        if state[f"grasped({self.obj_to_pick})"] or distances[f"picked_up({self.obj_to_pick})"] <= 0.0225:
             z_dist = distances[f"picked_up({self.obj_to_pick})"]
             reward = 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Big boost for lifting!
 
@@ -117,7 +117,7 @@ class KitchenPickWrapper(gym.Wrapper):
         # *** Stage 3: Getting Near the Object (Approaching) ***
         else:
             approach_dist = distances[f"over(gripper,{obj_over})"]
-            reward = -1 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1)  # Reward approaching smoothly
+            reward = 1 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1)  # Reward approaching smoothly
             if state[f"open_gripper(gripper)"]:
                 reward += 1  # Encourage keeping gripper open before grasping
 

@@ -328,7 +328,7 @@ class HanoiPickWrapper(gym.Wrapper):
         # *** Stage 3: Getting Near the Object (Approaching) ***
         else:
             approach_dist = distances[f"over(gripper,{obj_over})"]
-            reward = -1 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1)  # Reward approaching smoothly
+            reward = 1 - np.clip(approach_dist / MAX_APPROACH_DIST, 0, 1)  # Reward approaching smoothly
             if state[f"open_gripper(gripper)"]:
                 reward += 1  # Encourage keeping gripper open before grasping
 
