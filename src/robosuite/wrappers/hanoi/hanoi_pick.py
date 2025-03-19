@@ -298,7 +298,7 @@ class HanoiPickWrapper(gym.Wrapper):
 
         MAX_APPROACH_DIST = 0.1
         MAX_GRAB_DIST = 0.01
-        MAX_PICKED_DIST = 0.3
+        MAX_PICKED_DIST = 0.2
 
         reward = 0  # Start with a neutral baseline
 
@@ -307,7 +307,7 @@ class HanoiPickWrapper(gym.Wrapper):
             # check if no other object is grasped by counting the number of objects grasped
             counter_grasped = {k: state[k] for k in state if 'grasped' in k and state[k]}
             if len(counter_grasped) == 1:
-                z_target = self.env.table_offset[2] + 0.36
+                z_target = self.env.table_offset[2] + 0.20
                 object_z_loc = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][2]
                 z_dist = z_target - object_z_loc
                 reward = 100 + 100 * (1.0 - np.clip(z_dist / MAX_PICKED_DIST, 0, 1))  # Big boost for lifting!
