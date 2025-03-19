@@ -228,7 +228,7 @@ class KitchenPlaceWrapper(gym.Wrapper):
 
         MAX_APPROACH_DIST = 0.5
         MAX_DROP_DIST = 0.5
-        MAX_PICKED_DIST = 0.04
+        MAX_PICKED_DIST = 0.01
 
         reward = 0  # Neutral baseline
 
@@ -254,15 +254,15 @@ class KitchenPlaceWrapper(gym.Wrapper):
             reward = 10 + 10 * (1.0 - np.clip(dist / MAX_APPROACH_DIST, 0, 1))  # Reward approaching target location
 
         # *** Stage 4: Still Holding Object but Not Moving Toward Goal ***
-        elif state[f"grasped({self.obj_to_pick})"] or distances[f"picked_up({self.obj_to_pick})"] <= 0.0425:
-            dist = distances[f"picked_up({self.obj_to_pick})"]
+        elif state[f"grasped({self.obj_to_pick})"] or distances[f"picked_up({self.obj_to_pick})"] <= 0.0225:
+            dist = distances[f"picked_up({self.obj_to_pick})"] -0.015
             reward = 1 - np.clip(dist / MAX_PICKED_DIST, 0, 1)  # Penalize not approaching drop location
         
         else:
             pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             dist = np.linalg.norm(pick_pos - gripper_pos)
-            reward = -10 * np.clip(dist / MAX_APPROACH_DIST, 0, 1) # Penalize not grasping the object
+            reward = -10 -10 * np.clip(dist / MAX_APPROACH_DIST, 0, 1) # Penalize not grasping the object
         
         return reward
 

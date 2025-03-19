@@ -259,7 +259,7 @@ class AssemblePlaceWrapper(gym.Wrapper):
             pick_pos = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(self.detector.object_id[self.obj_to_pick])][:2]
             gripper_pos = self.env.sim.data.body_xpos[self.gripper_body][:2]
             dist = np.linalg.norm(pick_pos - gripper_pos)
-            reward = -10 * np.clip(dist / MAX_APPROACH_DIST, 0, 1) # Penalize not grasping the object
+            reward = -10 -10 * np.clip(dist / MAX_APPROACH_DIST, 0, 1) # Penalize not grasping the object
         
         return reward
 
