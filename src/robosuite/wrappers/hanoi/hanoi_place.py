@@ -215,21 +215,21 @@ class HanoiPlaceWrapper(gym.Wrapper):
                         obs = self.env.reset()
                         info = {}
                     valid_state = self.valid_state()
-                    trials += 1
-                    if trials > 3:
-                        break   
+                    # trials += 1
+                    # if trials > 10:
+                    #     break   
+                if self.goal_type != 'random':
+                    success = False
+                    for trial in range(20):
+                        self.task = self.sample_task()
+                        if self.goal_type in self.place_to_drop:
+                            success = True
+                            break
+                else:
+                    self.task = self.sample_task()
                 success, obs = self.reach_drop_reset()
                 if trials > 3:
                     break   
-            if self.goal_type != 'random':
-                success = False
-                for trial in range(20):
-                    self.task = self.sample_task()
-                    if self.goal_type in self.place_to_drop:
-                        success = True
-                        break
-            else:
-                self.task = self.sample_task()
             reset = success
 
         self.sim.forward()
@@ -342,7 +342,7 @@ class HanoiPlaceWrapper(gym.Wrapper):
         distances = self.detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True)
 
         MAX_APPROACH_DIST = 0.5
-        MAX_DROP_DIST = 0.01
+        MAX_DROP_DIST = 0.3
         MAX_PICKED_DIST = 0.06
 
         reward = 0  # Neutral baseline
@@ -370,7 +370,7 @@ class HanoiPlaceWrapper(gym.Wrapper):
 
         # *** Stage 4: Still Holding Object but Not Moving Toward Goal ***
         elif state[f"grasped({self.obj_to_pick})"]:
-            dist = distances[f"picked_up({self.obj_to_pick})"]
+            dist = distances[f"picked_up({self.obj_to_pick})"] - 0.015
             reward = 1.0 - np.clip(dist / MAX_PICKED_DIST, 0, 1)  # Penalize not approaching drop location
         else:
             pick_pos = self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]][:2]

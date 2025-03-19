@@ -438,7 +438,7 @@ class HanoiDetector:
         dist_xyz = np.linalg.norm(obj1_pos - obj2_pos)
         dist_xy = np.linalg.norm(obj1_pos[:-1] - obj2_pos[:-1])
         dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
-        return bool(dist_xy < 0.03 and obj1_pos[2] > obj2_pos[2]+0.00001 and dist_z < 0.055)
+        return bool(dist_xy < 0.03 and obj1_pos[2] > obj2_pos[2]+0.001 and dist_z < 0.055)
     
     def clear(self, obj):
         for other_obj in self.objects:
@@ -466,7 +466,7 @@ class HanoiDetector:
     
     def picked_up(self, obj, return_distance=False):
         active_obj = self.select_object(obj)
-        z_target = self.env.table_offset[2] + 0.45
+        z_target = self.env.table_offset[2] + 0.35
         object_z_loc = self.env.sim.data.body_xpos[self.env.obj_body_id[active_obj.name]][2]
         z_dist = z_target - object_z_loc
         if return_distance:
