@@ -208,7 +208,7 @@ class AssemblePlaceWrapper(gym.Wrapper):
                 print("Object successfully placed", state[f"on({self.obj_to_pick},{self.place_to_drop})"])
                 info['is_success'] = True
                 terminated = True
-                reward = 30*self.horizon - 10*min(self.step_count,self.horizon)
+                reward = 100*self.horizon - 10*min(self.step_count,self.horizon)
         
         truncated = truncated or self.env.done
 
