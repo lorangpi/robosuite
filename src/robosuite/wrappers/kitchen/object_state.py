@@ -18,6 +18,7 @@ class KitchenStateWrapper(gym.Wrapper):
         self.action_space = self.env.action_space
         
         # Object bodies
+        self.gripper_body = self.env.sim.model.body_name2id('gripper0_eef')
         self.pot_body = self.env.sim.model.body_name2id('PotObject_root')
         self.bread_body = self.env.sim.model.body_name2id('cube_bread_main')
         self.serving_body = self.env.sim.model.body_name2id('ServingRegionRed_main')
@@ -26,7 +27,7 @@ class KitchenStateWrapper(gym.Wrapper):
         self.obj_mapping = {'pot': self.pot_body, 'bread': self.bread_body, 'serving': self.serving_body, 'stove': self.stove_body, 'button': self.button_body}
 
     def get_obs(self):
-        gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
+        gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body][:3])
         left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
         right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
@@ -38,11 +39,18 @@ class KitchenStateWrapper(gym.Wrapper):
         goal_drop = self.env.place_to_drop
         if goal_drop == None:
             goal_drop = 'button'
-        place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[goal_drop]][:3])
+        try:
+            place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[goal_drop]][:3])
+        except KeyError:
+            place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping['button']][:3])
         if 'pot' in goal_pick:
             obj_to_pick_pos = obj_to_pick_pos + np.array([0, -0.09, 0])
         obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         return obs
+
+    def set_task(self, obj_to_pick, place_to_drop):
+        self.env.obj_to_pick = obj_to_pick
+        self.env.place_to_drop = place_to_drop
 
     def reset(self, seed=None):
         try:
