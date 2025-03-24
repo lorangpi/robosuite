@@ -41,7 +41,9 @@ class HanoiStateWrapper(gym.Wrapper):
         if 'peg' in self.env.place_to_drop:
             place_to_drop_pos = place_to_drop_pos - np.array([0.1, 0.04, 0])
         if self.relative_obs:
-            obs = np.concatenate([gripper_pos, gripper_pos-obj_to_pick_pos, gripper_pos-place_to_drop_pos, [aperture]])
+            rel_obj_to_pick_pos = gripper_pos - obj_to_pick_pos
+            rel_place_to_drop_pos = gripper_pos - place_to_drop_pos
+            obs = np.concatenate([gripper_pos, 1000*rel_obj_to_pick_pos, 1000*rel_place_to_drop_pos, [aperture]])
         else:
             obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         #print("Observation: ", obs)
