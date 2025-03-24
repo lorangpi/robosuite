@@ -18,6 +18,7 @@ class AssembleStateWrapper(gym.Wrapper):
         self.action_space = self.env.action_space
         
         # Object bodies
+        self.gripper_body = self.env.sim.model.body_name2id('gripper0_eef')
         self.roundnut_body = self.env.sim.model.body_name2id('RoundNut_main')
         self.squarenut_body = self.env.sim.model.body_name2id('SquareNut_main')
         self.roundpeg_body = self.env.sim.model.body_name2id('peg2')
@@ -25,7 +26,7 @@ class AssembleStateWrapper(gym.Wrapper):
         self.obj_mapping = {'roundnut': self.roundnut_body, 'squarenut': self.squarenut_body, 'roundpeg': self.roundpeg_body, 'squarepeg': self.squarepeg_body}
 
     def get_obs(self):
-        gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
+        gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body][:3])
         left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
         right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
@@ -35,11 +36,18 @@ class AssembleStateWrapper(gym.Wrapper):
             goal_pick = 'roundnut'
         obj_to_pick_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[goal_pick]][:3])
         goal_drop = self.env.place_to_drop
-        if goal_drop == None:
+        if goal_drop == None or goal_drop == 'table':
             goal_drop = 'roundpeg'
-        place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[goal_drop]][:3])
+        try:
+            place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[goal_drop]][:3])
+        except KeyError:
+            place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping['roundpeg']][:3])
         obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         return obs
+
+    def set_task(self, obj_to_pick, place_to_drop):
+        self.env.obj_to_pick = obj_to_pick
+        self.env.place_to_drop = place_to_drop
 
     def reset(self, seed=None):
         try:

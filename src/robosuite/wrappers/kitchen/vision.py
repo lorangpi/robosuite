@@ -42,8 +42,11 @@ class KitchenVisionWrapper(gym.Wrapper):
         obs = image
         return obs
 
-    def reset(self, seed=None):
+    def set_task(self, obj_to_pick, place_to_drop):
+        self.env.obj_to_pick = obj_to_pick
+        self.env.place_to_drop = place_to_drop
 
+    def reset(self, seed=None):
         try:
             obs, info = self.env.reset()
         except:

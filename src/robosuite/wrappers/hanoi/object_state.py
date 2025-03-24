@@ -16,6 +16,7 @@ class HanoiStateWrapper(gym.Wrapper):
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
         self.action_space = self.env.action_space
+        self.relative_obs = False
         
         # Object bodies
         self.cube1_body = self.env.sim.model.body_name2id('cube1_main')
@@ -27,6 +28,7 @@ class HanoiStateWrapper(gym.Wrapper):
         self.obj_mapping = {'cube1': self.cube1_body, 'cube2': self.cube2_body, 'cube3': self.cube3_body, 'peg1': self.peg1_body, 'peg2': self.peg2_body, 'peg3': self.peg3_body}
 
     def get_obs(self):
+        #print("Object to pick: ", self.env.obj_to_pick, " Place to drop: ", self.env.place_to_drop)
         gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
         left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
         right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
@@ -38,9 +40,19 @@ class HanoiStateWrapper(gym.Wrapper):
         place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[goal_drop]][:3])
         if 'peg' in self.env.place_to_drop:
             place_to_drop_pos = place_to_drop_pos - np.array([0.1, 0.04, 0])
-        obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
+        if self.relative_obs:
+            obs = np.concatenate([gripper_pos, gripper_pos-obj_to_pick_pos, gripper_pos-place_to_drop_pos, [aperture]])
+        else:
+            obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
+        #print("Observation: ", obs)
         #obs = np.concatenate([gripper_pos-obj_to_pick_pos, [aperture]])
         return obs
+
+    def set_task(self, obj_to_pick, place_to_drop):
+        self.env.obj_to_pick = obj_to_pick
+        self.env.place_to_drop = place_to_drop
+        self.relative_obs = True
+        #print("Object to pick: ", obj_to_pick, " Place to drop: ", place_to_drop)
 
     def reset(self, seed=None):
         try:
