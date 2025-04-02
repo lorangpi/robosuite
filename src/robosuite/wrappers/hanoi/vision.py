@@ -35,10 +35,12 @@ class HanoiVisionWrapper(gym.Wrapper):
         # Change the image to BGR
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         # Patch the object to pick image of cube1 on the top left corner
-        image[0:16, 0:16] = self.objects_image[self.env.obj_to_pick]
+        if self.env.obj_to_pick in self.objects_image:
+            image[0:16, 0:16] = self.objects_image[self.env.obj_to_pick]
         # Patch the object to place image of cube2 on the top right corner
         if self.env.place_to_drop is not None:
-            image[0:16, 128-16:128] = self.objects_image[self.env.place_to_drop]
+            if self.env.place_to_drop in self.objects_image:
+                image[0:16, 128-16:128] = self.objects_image[self.env.place_to_drop]
         # Flatten the image
         obs = image
         return obs
