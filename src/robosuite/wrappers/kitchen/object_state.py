@@ -49,7 +49,7 @@ class KitchenStateWrapper(gym.Wrapper):
         if self.relative_obs:
             rel_obj_to_pick_pos = gripper_pos - obj_to_pick_pos
             rel_place_to_drop_pos = gripper_pos - place_to_drop_pos
-            obs = np.concatenate([gripper_pos, 1000*rel_obj_to_pick_pos, 1000*rel_place_to_drop_pos, [aperture]])
+            obs = np.concatenate([gripper_pos, rel_obj_to_pick_pos, rel_place_to_drop_pos, [aperture]])
         else:
             obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         return obs

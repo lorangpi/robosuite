@@ -43,14 +43,15 @@ class HanoiStateWrapper(gym.Wrapper):
         if self.relative_obs:
             rel_obj_to_pick_pos = gripper_pos - obj_to_pick_pos
             rel_place_to_drop_pos = gripper_pos - place_to_drop_pos
-            obs = np.concatenate([gripper_pos, 1000*rel_obj_to_pick_pos, 1000*rel_place_to_drop_pos, [aperture]])
+            obs = np.concatenate([gripper_pos, rel_obj_to_pick_pos, rel_place_to_drop_pos, [aperture]])
         else:
             obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         #print("Observation: ", obs)
         #obs = np.concatenate([gripper_pos-obj_to_pick_pos, [aperture]])
         return obs
 
-    def set_task(self, obj_to_pick, place_to_drop):
+    def set_task(self, task):
+        obj_to_pick, place_to_drop = task
         self.env.obj_to_pick = obj_to_pick
         self.env.place_to_drop = place_to_drop
         self.relative_obs = True
