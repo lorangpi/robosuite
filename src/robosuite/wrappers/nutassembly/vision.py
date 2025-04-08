@@ -6,13 +6,14 @@ import cv2
 import os
 
 class AssembleVisionWrapper(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, image_size=224):
         # Run super method
         super().__init__(env=env)
         self.env = env
         # specify the observation space dtype for the vision wrapper
-        target_size = 128
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(target_size, target_size, 3), dtype=np.uint8)
+        self.image_size = image_size
+        self.target_size = int(image_size / 8)
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(image_size, image_size, 3), dtype=np.uint8)
         self.action_space = self.env.action_space
         # Load objects images
         base_path = os.path.join(os.path.dirname(__file__), '..', '..', 'models', 'assets', 'textures')
@@ -22,22 +23,22 @@ class AssembleVisionWrapper(gym.Wrapper):
             "roundpeg": cv2.imread(os.path.join(base_path, "roundpeg.png")),
             "squarepeg": cv2.imread(os.path.join(base_path, "squarepeg.png"))
         }
-        # Reshape the images to 16x16 and rotate them 90 degrees
+        # Reshape the images to self.target_sizexself.target_size and rotate them 90 degrees
         for k in self.objects_image:
-            self.objects_image[k] = cv2.resize(self.objects_image[k], (16, 16))
+            self.objects_image[k] = cv2.resize(self.objects_image[k], (self.target_size, self.target_size))
             #self.objects_image[k] = cv2.rotate(self.objects_image[k], cv2.ROTATE_90_CLOCKWISE)
 
     def patch_task_image(self, obs):
-        image = cv2.flip(obs.reshape(128, 128, 3), 0)
+        image = cv2.flip(obs.reshape(self.image_size, self.image_size, 3), 0)
         # Change the image to BGR
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         # Patch the object to pick image of cube1 on the top left corner
         if self.env.obj_to_pick in self.objects_image:
-            image[0:16, 0:16] = self.objects_image[self.env.obj_to_pick]
+            image[0:self.target_size, 0:self.target_size] = self.objects_image[self.env.obj_to_pick]
         # Patch the object to place image of cube2 on the top right corner
         if self.env.place_to_drop is not None:
             if self.env.place_to_drop in self.objects_image:
-                image[0:16, 128-16:128] = self.objects_image[self.env.place_to_drop]
+                image[0:self.target_size, 224-self.target_size:224] = self.objects_image[self.env.place_to_drop]
         # Flatten the image
         obs = image
         return obs
