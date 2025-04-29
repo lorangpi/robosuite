@@ -51,7 +51,10 @@ class AssembleStateWrapper(gym.Wrapper):
             obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         return obs
 
-    def set_task(self, obj_to_pick, place_to_drop):
+    def set_task(self, task):
+        obj_to_pick = task[0]
+        place_to_drop = task[1]
+        self.task = task
         self.env.obj_to_pick = obj_to_pick
         self.env.place_to_drop = place_to_drop
         self.relative_obs = True
@@ -63,6 +66,7 @@ class AssembleStateWrapper(gym.Wrapper):
             obs = self.env.reset()
             info = {}
         obs = self.get_obs()
+        info.update({"task":self.task})
         return obs, info
     
     def step(self, action):
@@ -72,4 +76,5 @@ class AssembleStateWrapper(gym.Wrapper):
         except:
             obs, reward, terminated, info = self.env.step(action)
         obs = self.get_obs()
+        info.update({"task":self.task})
         return obs, reward, terminated, truncated, info

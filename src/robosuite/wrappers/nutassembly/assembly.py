@@ -1,13 +1,13 @@
 import copy
-import gymnasium as gym
-#import gym
+#import gymnasium as gym
+import gym
 import robosuite as suite
 import numpy as np
 from robosuite.utils.detector import NutAssemblyDetector
 
 
 class AssemblyWrapper(gym.Wrapper):
-    def __init__(self, env, horizon=500):
+    def __init__(self, env, horizon=500, render=False):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -15,6 +15,7 @@ class AssemblyWrapper(gym.Wrapper):
         self.detector = NutAssemblyDetector(self)
         self.step_count = 0
         self.horizon = horizon
+        self.render_step = render
 
         # set up spaces
         self.observation_space = self.env.observation_space
@@ -66,4 +67,6 @@ class AssemblyWrapper(gym.Wrapper):
             print("Horizon reached within environment")
             terminated = True
         info["state"] = state
+        if self.render_step:
+            self.env.render()
         return obs, reward, terminated, truncated, info
