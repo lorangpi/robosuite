@@ -1,4 +1,10 @@
-# robosuite
+# Added Towers of Hanoi environments and few novelties wrappers (impacting pick&place) to Robosuite
+
+To check the Towers of Hanoi environments, see src/robosuite/environments/manipulation
+
+For more details about the novelties wrappers, see src/robosuite/environments/novelties
+
+The rest of the readme (and most of the rest of the code) is taken from the official Robosuite repository.
 
 ![gallery of_environments](docs/images/gallery.png)
 
