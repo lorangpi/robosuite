@@ -166,6 +166,7 @@ class Hanoi(SingleArmEnv):
         renderer="mujoco",
         renderer_config=None,
         random_reset = False,
+        cube_init_pos_noise_std=0.0,
     ):
         self.env_id = "Hanoi"
         # settings for table top
@@ -184,6 +185,8 @@ class Hanoi(SingleArmEnv):
         # object placement initializer
         self.reset_state = None
         self.placement_initializer = placement_initializer
+
+        self.cube_init_pos_noise_std = cube_init_pos_noise_std
 
         super().__init__(
             robots=robots,
@@ -601,6 +604,31 @@ class Hanoi(SingleArmEnv):
             # Loop through all objects and reset their positions
             for obj_pos, obj_quat, obj in self.object_placements.values():
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
+            # Sync derived state so body_xpos / body_xquat reflect updated qpos before applying noise
+            self.sim.forward()
+
+        # Add tower position noise after cube positions are set
+        if self.cube_init_pos_noise_std > 0:
+            # Compute one shared XY for the entire tower based on the base cube (cube3)
+            base_xy = np.array(self.sim.data.body_xpos[self.cube3_body_id][:2])
+            xy_noise = np.random.normal(0, self.cube_init_pos_noise_std, size=2)
+            target_xy = base_xy + xy_noise
+
+            # Function to set a cube's xy to target_xy while keeping its current z and orientation
+            def _set_cube_xy(cube):
+                body_id = self.sim.model.body_name2id(cube.root_body)
+                pos = np.array(self.sim.data.body_xpos[body_id])
+                quat = np.array(self.sim.data.body_xquat[body_id])
+                pos[:2] = target_xy  # enforce identical XY for all cubes
+                self.sim.data.set_joint_qpos(cube.joints[0], np.concatenate([pos, quat]))
+
+            # Order doesn't matter for setting poses, but we keep base->top for clarity
+            _set_cube_xy(self.cube3)
+            _set_cube_xy(self.cube2)
+            _set_cube_xy(self.cube1)
+
+            # Synchronize derived quantities
+            self.sim.forward()
 
     def _setup_observables(self):
         """
