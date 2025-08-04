@@ -1,6 +1,6 @@
 import copy
-#import gymnasium as gym
-import gym
+import gymnasium as gym
+#import gym
 import robosuite as suite
 import numpy as np
 from robosuite.utils.detector import HanoiDetector
