@@ -352,14 +352,61 @@ class PickPlaceDetector:
 class HanoiDetector:
     def __init__(self, env):
         self.env = env
-        self.objects = ['cube1', 'cube2', 'cube3']
-        self.object_id = {'cube1': 'cube1_main', 'cube2': 'cube2_main', 'cube3': 'cube3_main', 'peg1': 'peg1_main', 'peg2': 'peg2_main', 'peg3': 'peg3_main'}
-        self.object_areas = ['peg1', 'peg2', 'peg3']
-        self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
-        self.grippers_areas = ['pick', 'drop', 'activate', 'lightswitch']
-        self.grippers = ['gripper']
-        self.area_size = self.env.peg_radius
-        self.max_distance = 10 #max distance for the robotic arm in meters
+        
+        # Dynamically detect which cubes are present in the environment
+        self.objects = []
+        self.object_id = {}
+        
+        # Check for cubes 1-4 (common in Hanoi environments)
+        for i in range(1, 5):
+            cube_name = f'cube{i}'
+            cube_body_name = f'cube{i}_main'
+            try:
+                # Try to get the body ID for this cube
+                body_id = self.env.sim.model.body_name2id(cube_body_name)
+                self.objects.append(cube_name)
+                self.object_id[cube_name] = cube_body_name
+            except ValueError:
+                # Cube doesn't exist, skip it
+                continue
+        
+        # Check for pegs 0-4 (common in Hanoi environments)
+        self.object_areas = []
+        for i in range(5):  # 0 to 4
+            peg_name = f'peg{i}'
+            peg_body_name = f'peg{i}_main'
+            try:
+                # Try to get the body ID for this peg
+                body_id = self.env.sim.model.body_name2id(peg_body_name)
+                self.object_areas.append(peg_name)
+                self.object_id[peg_name] = peg_body_name
+            except ValueError:
+                # Peg doesn't exist, skip it
+                continue
+        
+        # If no pegs found with numbers, try the standard peg1, peg2, peg3
+        if not self.object_areas:
+            for i in range(1, 4):
+                peg_name = f'peg{i}'
+                peg_body_name = f'peg{i}_main'
+                try:
+                    body_id = self.env.sim.model.body_name2id(peg_body_name)
+                    self.object_areas.append(peg_name)
+                    self.object_id[peg_name] = peg_body_name
+                except ValueError:
+                    continue
+        
+        # Set default values if nothing was found
+        if not self.objects:
+            # Don't set hardcoded defaults - let the environment determine what's available
+            pass
+        
+        if not self.object_areas:
+            # Don't set hardcoded defaults - let the environment determine what's available
+            pass
+        
+        # Set other properties
+        self.max_distance = 1.0
 
     def at(self, obj, area, return_distance=False):
         obj_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj]]
