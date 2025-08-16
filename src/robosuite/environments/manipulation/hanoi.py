@@ -340,7 +340,7 @@ class Hanoi(SingleArmEnv):
             "specular": "0.4",
             "shininess": "0.1",
         }
-        
+
         text_number1 = CustomMaterial(
             texture="Number1",
             tex_name="number1",
@@ -395,11 +395,9 @@ class Hanoi(SingleArmEnv):
             name="cube4",
             size_min=[0.025, 0.025, 0.025],
             size_max=[0.025, 0.025, 0.025],
-            rgba=[1, 1, 0, 1],
+            rgba=[1, 1, 0, 1],  # These don't actually change anything
             material=text_number4,
         )
-        # Note: cube4 is defined but not loaded into the simulation model initially
-        # This allows for future expansion to support 4-cube configurations
 
         # Add visual pegs
         self.visual_peg1 = PlateVisualObject(name="peg1")
