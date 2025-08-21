@@ -372,15 +372,15 @@ class Hanoi(SingleArmEnv):
 
         self.cube1 = BoxObject(
             name="cube1",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.02, 0.02, 0.02],
+            size_max=[0.02, 0.02, 0.02],
             rgba=[1, 0, 0, 1],
             material=text_number1,
         )
         self.cube2 = BoxObject(
             name="cube2",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.0225, 0.0225, 0.0225],
+            size_max=[0.0225, 0.0225, 0.0225],
             rgba=[0, 1, 0, 1],
             material=text_number2,
         )
@@ -393,8 +393,8 @@ class Hanoi(SingleArmEnv):
         )
         self.cube4 = BoxObject(
             name="cube4",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.0275, 0.0275, 0.0275],
+            size_max=[0.0275, 0.0275, 0.0275],
             rgba=[1, 1, 0, 1],  # These don't actually change anything
             material=text_number4,
         )
