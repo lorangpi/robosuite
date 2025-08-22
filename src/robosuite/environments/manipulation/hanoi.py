@@ -574,11 +574,8 @@ class Hanoi(SingleArmEnv):
     def random_reset_f(self):
         # Cube 3
         object1_placement = self.placement_initializer1.sample()
-        print("object1_placement: ", object1_placement)
-        # list all objects that cube2 can be placed on (including pegs)
-        # Check the peg where cube3 is placed
-        print("object1_placement['cube3'][0]: ", object1_placement["cube3"][0])
-        # After placing Cube3, track which peg it's on
+        # print("object1_placement: ", object1_placement)
+        # print("object1_placement['cube3'][0]: ", object1_placement["cube3"][0])
         cube3_peg_y = object1_placement["cube3"][0][1]
         
         # Cube 2
@@ -596,11 +593,11 @@ class Hanoi(SingleArmEnv):
 
         # Now Cube2 can only be placed on Cube3 or on available pegs
         list_choice2 = [object1_placement["cube3"][0]] + available_pegs
-        print("list_choice2: ", list_choice2)
+        # print("list_choice2: ", list_choice2)
         object_2_ontop = list_choice2[np.random.randint(0, 3)]
-        print("object_2_ontop: ", object_2_ontop)
+        # print("object_2_ontop: ", object_2_ontop)
         object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-        print("object2_placement: ", object2_placement)
+        # print("object2_placement: ", object2_placement)
 
         # Cube 1
         list_choice3 = list_choice2.copy()
@@ -611,17 +608,17 @@ class Hanoi(SingleArmEnv):
         else:
             list_choice3.remove(list_choice3[2])
         list_choice3.append(object2_placement["cube2"][0])
-        print("list_choice3: ", list_choice3)
+        # print("list_choice3: ", list_choice3)
         object_3_ontop = list_choice3[np.random.randint(0, 3)]
-        print("object_3_ontop: ", object_3_ontop)
+        # print("object_3_ontop: ", object_3_ontop)
         object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-        print("object3_placement: ", object3_placement)
+        # print("object3_placement: ", object3_placement)
         self.object_placements = object1_placement
-        print("self.object_placements: ", self.object_placements)
+        # print("self.object_placements: ", self.object_placements)
         self.object_placements.update(object2_placement)
-        print("self.object_placements: ", self.object_placements)
+        # print("self.object_placements: ", self.object_placements)
         self.object_placements.update(object3_placement)
-        print("self.object_placements: ", self.object_placements)
+        # print("self.object_placements: ", self.object_placements)
         
         # Store the default block configuration
         self.current_block_config = ['cube1', 'cube2', 'cube3']
@@ -673,10 +670,10 @@ class Hanoi(SingleArmEnv):
         if block_config == ['cube1', 'cube2', 'cube3']:
             # Cube 3
             object1_placement = bottom_initializer.sample()
-            print("object1_placement: ", object1_placement)
+            # print("object1_placement: ", object1_placement)
             # list all objects that cube2 can be placed on (including pegs)
             # Check the peg where cube3 is placed
-            print("object1_placement['cube3'][0]: ", object1_placement["cube3"][0])
+            # print("object1_placement['cube3'][0]: ", object1_placement["cube3"][0])
             # After placing Cube3, track which peg it's on
             cube3_peg_y = object1_placement["cube3"][0][1]
             
@@ -695,11 +692,11 @@ class Hanoi(SingleArmEnv):
 
             # Now Cube2 can only be placed on Cube3 or on available pegs
             list_choice2 = [object1_placement["cube3"][0]] + available_pegs
-            print("list_choice2: ", list_choice2)
+            # print("list_choice2: ", list_choice2)
             object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            print("object_2_ontop: ", object_2_ontop)
+            # print("object_2_ontop: ", object_2_ontop)
             object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            print("object2_placement: ", object2_placement)
+            # print("object2_placement: ", object2_placement)
 
             # Cube 1
             list_choice3 = list_choice2.copy()
@@ -710,17 +707,17 @@ class Hanoi(SingleArmEnv):
             else:
                 list_choice3.remove(list_choice3[2])
             list_choice3.append(object2_placement["cube2"][0])
-            print("list_choice3: ", list_choice3)
+            # print("list_choice3: ", list_choice3)
             object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            print("object_3_ontop: ", object_3_ontop)
+            # print("object_3_ontop: ", object_3_ontop)
             object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            print("object3_placement: ", object3_placement)
+            # print("object3_placement: ", object3_placement)
             self.object_placements = object1_placement
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object2_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object3_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             
             # Store the default block configuration
             self.current_block_config = ['cube1', 'cube2', 'cube3']
@@ -730,10 +727,10 @@ class Hanoi(SingleArmEnv):
             # Cube 4
             bottom_initializer.mujoco_objects = [self.cube4]
             object1_placement = bottom_initializer.sample()
-            print("object1_placement: ", object1_placement)
+            # print("object1_placement: ", object1_placement)
             # list all objects that cube2 can be placed on (including pegs)
             # Check the peg where cube3 is placed
-            print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
+            # print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
             # After placing Cube3, track which peg it's on
             cube4_peg_y = object1_placement["cube4"][0][1]
             
@@ -752,11 +749,11 @@ class Hanoi(SingleArmEnv):
 
             # Now Cube2 can only be placed on Cube3 or on available pegs
             list_choice2 = [object1_placement["cube4"][0]] + available_pegs
-            print("list_choice2: ", list_choice2)
+            # print("list_choice2: ", list_choice2)
             object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            print("object_2_ontop: ", object_2_ontop)
+            # print("object_2_ontop: ", object_2_ontop)
             object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            print("object2_placement: ", object2_placement)
+            # print("object2_placement: ", object2_placement)
 
             # Cube 1
             list_choice3 = list_choice2.copy()
@@ -767,26 +764,26 @@ class Hanoi(SingleArmEnv):
             else:
                 list_choice3.remove(list_choice3[2])
             list_choice3.append(object2_placement["cube2"][0])
-            print("list_choice3: ", list_choice3)
+            # print("list_choice3: ", list_choice3)
             object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            print("object_3_ontop: ", object_3_ontop)
+            # print("object_3_ontop: ", object_3_ontop)
             object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            print("object3_placement: ", object3_placement)
+            # print("object3_placement: ", object3_placement)
             self.object_placements = object1_placement
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object2_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object3_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             
         elif block_config == ['cube1', 'cube3', 'cube4']:
             # Cube 4
             bottom_initializer.mujoco_objects = [self.cube4]
             object1_placement = bottom_initializer.sample()
-            print("object1_placement: ", object1_placement)
+            # print("object1_placement: ", object1_placement)
             # list all objects that cube2 can be placed on (including pegs)
             # Check the peg where cube3 is placed
-            print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
+            # print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
             # After placing Cube3, track which peg it's on
             cube4_peg_y = object1_placement["cube4"][0][1]
             
@@ -805,11 +802,11 @@ class Hanoi(SingleArmEnv):
 
             # Now Cube3 can only be placed on Cube4 or on available pegs
             list_choice2 = [object1_placement["cube4"][0]] + available_pegs
-            print("list_choice2: ", list_choice2)
+            # print("list_choice2: ", list_choice2)
             object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            print("object_2_ontop: ", object_2_ontop)
+            # print("object_2_ontop: ", object_2_ontop)
             object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            print("object2_placement: ", object2_placement)
+            # print("object2_placement: ", object2_placement)
 
             # Cube 1
             list_choice3 = list_choice2.copy()
@@ -820,26 +817,26 @@ class Hanoi(SingleArmEnv):
             else:
                 list_choice3.remove(list_choice3[2])
             list_choice3.append(object2_placement["cube2"][0])
-            print("list_choice3: ", list_choice3)
+            # print("list_choice3: ", list_choice3)
             object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            print("object_3_ontop: ", object_3_ontop)
+            # print("object_3_ontop: ", object_3_ontop)
             object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            print("object3_placement: ", object3_placement)
+            # print("object3_placement: ", object3_placement)
             self.object_placements = object1_placement
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object2_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object3_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
         
         elif block_config == ['cube2', 'cube3', 'cube4']:
             # Cube 4
             bottom_initializer.mujoco_objects = [self.cube4]
             object1_placement = bottom_initializer.sample()
-            print("object1_placement: ", object1_placement)
+            # print("object1_placement: ", object1_placement)
             # list all objects that cube2 can be placed on (including pegs)
             # Check the peg where cube3 is placed
-            print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
+            # print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
             # After placing Cube3, track which peg it's on
             cube4_peg_y = object1_placement["cube4"][0][1]
             
@@ -858,11 +855,11 @@ class Hanoi(SingleArmEnv):
 
             # Now Cube3 can only be placed on Cube4 or on available pegs
             list_choice2 = [object1_placement["cube4"][0]] + available_pegs
-            print("list_choice2: ", list_choice2)
+            # print("list_choice2: ", list_choice2)
             object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            print("object_2_ontop: ", object_2_ontop)
+            # print("object_2_ontop: ", object_2_ontop)
             object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            print("object2_placement: ", object2_placement)
+            # print("object2_placement: ", object2_placement)
 
             # Cube 1
             list_choice3 = list_choice2.copy()
@@ -873,17 +870,17 @@ class Hanoi(SingleArmEnv):
             else:
                 list_choice3.remove(list_choice3[2])
             list_choice3.append(object2_placement["cube2"][0])
-            print("list_choice3: ", list_choice3)
+            # print("list_choice3: ", list_choice3)
             object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            print("object_3_ontop: ", object_3_ontop)
+            # print("object_3_ontop: ", object_3_ontop)
             object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            print("object3_placement: ", object3_placement)
+            # print("object3_placement: ", object3_placement)
             self.object_placements = object1_placement
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object2_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             self.object_placements.update(object3_placement)
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
         
         else:
             # Fallback to default
@@ -960,17 +957,17 @@ class Hanoi(SingleArmEnv):
                 # Store the default block configuration
                 self.current_block_config = ['cube1', 'cube2', 'cube3']
             # Loop through all objects and reset their positions
-            print("self.object_placements: ", self.object_placements)
+            # print("self.object_placements: ", self.object_placements)
             for obj_pos, obj_quat, obj in self.object_placements.values():
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
             # Sync derived state so body_xpos / body_xquat reflect updated qpos before applying noise
             self.sim.forward()
             # After sim.forward()
-            print("After sim.forward():")
+            # print("After sim.forward():")
             for obj_pos, obj_quat, obj in self.object_placements.values():
                 body_id = self.sim.model.body_name2id(obj.root_body)
                 current_pos = self.sim.data.body_xpos[body_id]
-                print(f"{obj.name}: target={obj_pos}, current={current_pos}")
+                # print(f"{obj.name}: target={obj_pos}, current={current_pos}")
 
         # Add tower position noise after cube positions are set
         if self.cube_init_pos_noise_std > 0:
@@ -1078,8 +1075,8 @@ class Hanoi(SingleArmEnv):
 
             @sensor(modality=modality)
             def gripper_to_cube1(obs_cache):
-                print("gripper_to_cube1: ", obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"] if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
-                    else np.zeros(3))
+                #print("gripper_to_cube1: ", obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"] if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                #    else np.zeros(3))
                 return (
                     obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"]
                     if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
@@ -1098,9 +1095,9 @@ class Hanoi(SingleArmEnv):
 
             @sensor(modality=modality)
             def gripper_to_cube3(obs_cache):
-                print("gripper_to_cube3: ", obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"] if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
-                    else np.zeros(3))
-                print("")
+                #print("gripper_to_cube3: ", obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"] if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                #    else np.zeros(3))
+                #print("")
                 return (
                     obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"]
                     if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
