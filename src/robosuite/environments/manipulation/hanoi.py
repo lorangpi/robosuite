@@ -130,12 +130,12 @@ class Hanoi(SingleArmEnv):
             [multiple / a single] segmentation(s) to use for all cameras. A list of list of str specifies per-camera
             segmentation setting(s) to use.
 
-        random_reset (bool): If True, randomizes the initial peg placement for the blocks.
+        random_block_placement (bool): If True, randomizes the initial peg placement for the blocks,
+            while maintaining Hanoi tower rules (bigger numbers cannot go on top of smaller numbers).
 
         cube_init_pos_noise_std (float): Standard deviation of noise to add to initial cube positions.
 
-        randomize_block_config (bool): If True and random_reset is True, randomizes the block configuration
-            while maintaining Hanoi tower rules (bigger numbers cannot go on top of smaller numbers).
+        random_block_selection (bool): If True and random_block_placement is True, randomizes the block configuration
             Valid configurations include: [1,2,3], [1,2,4], [1,3,4], [2,3,4].
 
     Raises:
@@ -173,17 +173,17 @@ class Hanoi(SingleArmEnv):
         camera_segmentations=None,  # {None, instance, class, element}
         renderer="mujoco",
         renderer_config=None,
-        random_reset = False,
+        random_block_placement = False,
         cube_init_pos_noise_std=0.0,
-        randomize_block_config=False,
+        random_block_selection=False,
     ):
         self.env_id = "Hanoi"
         # settings for table top
         self.table_full_size = table_full_size
         self.table_friction = table_friction
         self.table_offset = np.array((0, 0, 0.8))
-        self.random_reset = random_reset
-        self.randomize_block_config = randomize_block_config
+        self.random_block_placement = random_block_placement
+        self.random_block_selection = random_block_selection
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -193,7 +193,7 @@ class Hanoi(SingleArmEnv):
         self.use_object_obs = use_object_obs
 
         # object placement initializer
-        self.reset_state = None
+        # self.reset_state = None
         self.placement_initializer = placement_initializer
 
         self.cube_init_pos_noise_std = cube_init_pos_noise_std
@@ -459,22 +459,18 @@ class Hanoi(SingleArmEnv):
                         z_offset=-0.062,
                     ))
 
-            if not(self.random_reset):
-                place = 0
-            else:
-                place = np.random.randint(0, 3)
-            self.placement_initializer1 = UniformRandomSampler(
+            self.large_block_placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube3,
-                x_range=[self.pegs_xy_pos[place][0]-0.1, self.pegs_xy_pos[place][0]-0.1],
-                y_range=[self.pegs_xy_pos[place][1]-0.05, self.pegs_xy_pos[place][1]-0.05],
+                x_range=[self.pegs_xy_pos[0][0]-0.1, self.pegs_xy_pos[0][0]-0.1],
+                y_range=[self.pegs_xy_pos[0][1]-0.05, self.pegs_xy_pos[0][1]-0.05],
                 rotation=0,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-            self.placement_initializer2 = UniformRandomSampler(
+            self.medium_block_placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube2,
                 rotation=0,
@@ -483,7 +479,7 @@ class Hanoi(SingleArmEnv):
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-            self.placement_initializer3 = UniformRandomSampler(
+            self.small_block_placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube1,
                 rotation=0,
@@ -492,15 +488,7 @@ class Hanoi(SingleArmEnv):
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-            self.placement_initializer4 = UniformRandomSampler(
-                name="ObjectSampler",
-                mujoco_objects=self.cube4,
-                rotation=0,
-                ensure_object_boundary_in_range=False,
-                ensure_valid_placement=True,
-                reference_pos=self.table_offset,
-                z_offset=0.01,
-            )
+
         self.object_placements = {"cube1":None, "cube2":None, "cube3":None, "cube4":None}
         # task includes arena, robot, and objects of interest
         self.model = ManipulationTask(
@@ -522,9 +510,6 @@ class Hanoi(SingleArmEnv):
         self.cube2_body_id = self.sim.model.body_name2id(self.cube2.root_body)
         self.cube3_body_id = self.sim.model.body_name2id(self.cube3.root_body)
         self.cube4_body_id = self.sim.model.body_name2id(self.cube4.root_body)
-
-    def set_reset_state(self, state):
-        self.reset_state = state
 
     def reset_positions(self, predicates):
         """
@@ -571,330 +556,6 @@ class Hanoi(SingleArmEnv):
             object_placement = placement_initializer.sample(reference=self.object_placements[onto_obj][onto_obj][0], on_top=True)
         return object_placement
 
-    def random_reset_f(self):
-        # Cube 3
-        object1_placement = self.placement_initializer1.sample()
-        # print("object1_placement: ", object1_placement)
-        # print("object1_placement['cube3'][0]: ", object1_placement["cube3"][0])
-        cube3_peg_y = object1_placement["cube3"][0][1]
-        
-        # Cube 2
-        # For Cube2, remove the peg that Cube3 is on from choices
-        available_pegs = [tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-        # Remove the peg that Cube3 is on
-        occupied_peg = None
-        for peg in available_pegs:
-            if abs(peg[1] - cube3_peg_y) < 0.01:  # Check if this is the same peg
-                occupied_peg = peg
-                break
-
-        if occupied_peg:
-            available_pegs.remove(occupied_peg)
-
-        # Now Cube2 can only be placed on Cube3 or on available pegs
-        list_choice2 = [object1_placement["cube3"][0]] + available_pegs
-        # print("list_choice2: ", list_choice2)
-        object_2_ontop = list_choice2[np.random.randint(0, 3)]
-        # print("object_2_ontop: ", object_2_ontop)
-        object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-        # print("object2_placement: ", object2_placement)
-
-        # Cube 1
-        list_choice3 = list_choice2.copy()
-        if abs(object2_placement["cube2"][0][1] - list_choice3[0][1]) < 0.01:
-            list_choice3.remove(list_choice3[0])
-        elif abs(object2_placement["cube2"][0][1] - list_choice3[1][1]) < 0.01:
-            list_choice3.remove(list_choice3[1])
-        else:
-            list_choice3.remove(list_choice3[2])
-        list_choice3.append(object2_placement["cube2"][0])
-        # print("list_choice3: ", list_choice3)
-        object_3_ontop = list_choice3[np.random.randint(0, 3)]
-        # print("object_3_ontop: ", object_3_ontop)
-        object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-        # print("object3_placement: ", object3_placement)
-        self.object_placements = object1_placement
-        # print("self.object_placements: ", self.object_placements)
-        self.object_placements.update(object2_placement)
-        # print("self.object_placements: ", self.object_placements)
-        self.object_placements.update(object3_placement)
-        # print("self.object_placements: ", self.object_placements)
-        
-        # Store the default block configuration
-        self.current_block_config = ['cube1', 'cube2', 'cube3']
-
-    def get_random_block_config(self):
-        """
-        Generates a random valid Hanoi block configuration.
-        Valid configurations are those where bigger numbers cannot go on top of smaller numbers.
-        Returns a list of block names in order from top to bottom.
-        """
-        # Define all valid configurations (from top to bottom)
-        # Each configuration must follow Hanoi rules: bigger numbers cannot be on top of smaller numbers
-        valid_configs = [
-            ['cube1', 'cube2', 'cube3'],  # Default: 1,2,3
-            ['cube1', 'cube2', 'cube4'],  # 1,2,4
-            ['cube1', 'cube3', 'cube4'],  # 1,3,4
-            ['cube2', 'cube3', 'cube4'],  # 2,3,4
-        ]
-        
-        # Randomly select one configuration
-        return valid_configs[np.random.randint(0, len(valid_configs))]
-
-    def random_reset_with_config(self, block_config):
-        """
-        Resets the environment with a specific block configuration.
-        Args:
-            block_config (list): List of block names in order from top to bottom
-        """
-        # Use the same peg logic as random_reset_f - don't randomize peg when only randomizing blocks
-        if not(self.random_reset):
-            place = 0  # Default peg (left)
-        else:
-            place = np.random.randint(0, 3)  # Random peg only if random_reset is True
-        
-        # Create a placement initializer constrained to the specific peg for the bottom block
-        bottom_initializer = UniformRandomSampler(
-            name="ObjectSampler",
-            mujoco_objects=self.cube3,  # Default bottom block
-            x_range=[self.pegs_xy_pos[place][0]-0.1, self.pegs_xy_pos[place][0]-0.1],
-            y_range=[self.pegs_xy_pos[place][1]-0.05, self.pegs_xy_pos[place][1]-0.05],
-            rotation=0,
-            ensure_object_boundary_in_range=False,
-            ensure_valid_placement=True,
-            reference_pos=self.table_offset,
-            z_offset=0.01,
-        )
-        
-        # Use the existing working logic but adapt it for the new configuration
-        if block_config == ['cube1', 'cube2', 'cube3']:
-            # Cube 3
-            object1_placement = bottom_initializer.sample()
-            # print("object1_placement: ", object1_placement)
-            # list all objects that cube2 can be placed on (including pegs)
-            # Check the peg where cube3 is placed
-            # print("object1_placement['cube3'][0]: ", object1_placement["cube3"][0])
-            # After placing Cube3, track which peg it's on
-            cube3_peg_y = object1_placement["cube3"][0][1]
-            
-            # Cube 2
-            # For Cube2, remove the peg that Cube3 is on from choices
-            available_pegs = [tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-            # Remove the peg that Cube3 is on
-            occupied_peg = None
-            for peg in available_pegs:
-                if abs(peg[1] - cube3_peg_y) < 0.01:  # Check if this is the same peg
-                    occupied_peg = peg
-                    break
-
-            if occupied_peg:
-                available_pegs.remove(occupied_peg)
-
-            # Now Cube2 can only be placed on Cube3 or on available pegs
-            list_choice2 = [object1_placement["cube3"][0]] + available_pegs
-            # print("list_choice2: ", list_choice2)
-            object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            # print("object_2_ontop: ", object_2_ontop)
-            object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            # print("object2_placement: ", object2_placement)
-
-            # Cube 1
-            list_choice3 = list_choice2.copy()
-            if abs(object2_placement["cube2"][0][1] - list_choice3[0][1]) < 0.01:
-                list_choice3.remove(list_choice3[0])
-            elif abs(object2_placement["cube2"][0][1] - list_choice3[1][1]) < 0.01:
-                list_choice3.remove(list_choice3[1])
-            else:
-                list_choice3.remove(list_choice3[2])
-            list_choice3.append(object2_placement["cube2"][0])
-            # print("list_choice3: ", list_choice3)
-            object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            # print("object_3_ontop: ", object_3_ontop)
-            object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            # print("object3_placement: ", object3_placement)
-            self.object_placements = object1_placement
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object2_placement)
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object3_placement)
-            # print("self.object_placements: ", self.object_placements)
-            
-            # Store the default block configuration
-            self.current_block_config = ['cube1', 'cube2', 'cube3']
-
-        
-        elif block_config == ['cube1', 'cube2', 'cube4']:
-            # Cube 4
-            bottom_initializer.mujoco_objects = [self.cube4]
-            object1_placement = bottom_initializer.sample()
-            # print("object1_placement: ", object1_placement)
-            # list all objects that cube2 can be placed on (including pegs)
-            # Check the peg where cube3 is placed
-            # print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
-            # After placing Cube3, track which peg it's on
-            cube4_peg_y = object1_placement["cube4"][0][1]
-            
-            # Cube 3
-            # For Cube3, remove the peg that Cube3 is on from choices
-            available_pegs = [tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-            # Remove the peg that Cube4 is on
-            occupied_peg = None
-            for peg in available_pegs:
-                if abs(peg[1] - cube4_peg_y) < 0.01:  # Check if this is the same peg
-                    occupied_peg = peg
-                    break
-
-            if occupied_peg:
-                available_pegs.remove(occupied_peg)
-
-            # Now Cube2 can only be placed on Cube3 or on available pegs
-            list_choice2 = [object1_placement["cube4"][0]] + available_pegs
-            # print("list_choice2: ", list_choice2)
-            object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            # print("object_2_ontop: ", object_2_ontop)
-            object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            # print("object2_placement: ", object2_placement)
-
-            # Cube 1
-            list_choice3 = list_choice2.copy()
-            if abs(object2_placement["cube2"][0][1] - list_choice3[0][1]) < 0.01:
-                list_choice3.remove(list_choice3[0])
-            elif abs(object2_placement["cube2"][0][1] - list_choice3[1][1]) < 0.01:
-                list_choice3.remove(list_choice3[1])
-            else:
-                list_choice3.remove(list_choice3[2])
-            list_choice3.append(object2_placement["cube2"][0])
-            # print("list_choice3: ", list_choice3)
-            object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            # print("object_3_ontop: ", object_3_ontop)
-            object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            # print("object3_placement: ", object3_placement)
-            self.object_placements = object1_placement
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object2_placement)
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object3_placement)
-            # print("self.object_placements: ", self.object_placements)
-            
-        elif block_config == ['cube1', 'cube3', 'cube4']:
-            # Cube 4
-            bottom_initializer.mujoco_objects = [self.cube4]
-            object1_placement = bottom_initializer.sample()
-            # print("object1_placement: ", object1_placement)
-            # list all objects that cube2 can be placed on (including pegs)
-            # Check the peg where cube3 is placed
-            # print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
-            # After placing Cube3, track which peg it's on
-            cube4_peg_y = object1_placement["cube4"][0][1]
-            
-            # Cube 3
-            # For Cube3, remove the peg that Cube4 is on from choices
-            available_pegs = [tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-            # Remove the peg that Cube3 is on
-            occupied_peg = None
-            for peg in available_pegs:
-                if abs(peg[1] - cube4_peg_y) < 0.01:  # Check if this is the same peg
-                    occupied_peg = peg
-                    break
-
-            if occupied_peg:
-                available_pegs.remove(occupied_peg)
-
-            # Now Cube3 can only be placed on Cube4 or on available pegs
-            list_choice2 = [object1_placement["cube4"][0]] + available_pegs
-            # print("list_choice2: ", list_choice2)
-            object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            # print("object_2_ontop: ", object_2_ontop)
-            object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            # print("object2_placement: ", object2_placement)
-
-            # Cube 1
-            list_choice3 = list_choice2.copy()
-            if abs(object2_placement["cube2"][0][1] - list_choice3[0][1]) < 0.01:
-                list_choice3.remove(list_choice3[0])
-            elif abs(object2_placement["cube2"][0][1] - list_choice3[1][1]) < 0.01:
-                list_choice3.remove(list_choice3[1])
-            else:
-                list_choice3.remove(list_choice3[2])
-            list_choice3.append(object2_placement["cube2"][0])
-            # print("list_choice3: ", list_choice3)
-            object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            # print("object_3_ontop: ", object_3_ontop)
-            object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            # print("object3_placement: ", object3_placement)
-            self.object_placements = object1_placement
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object2_placement)
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object3_placement)
-            # print("self.object_placements: ", self.object_placements)
-        
-        elif block_config == ['cube2', 'cube3', 'cube4']:
-            # Cube 4
-            bottom_initializer.mujoco_objects = [self.cube4]
-            object1_placement = bottom_initializer.sample()
-            # print("object1_placement: ", object1_placement)
-            # list all objects that cube2 can be placed on (including pegs)
-            # Check the peg where cube3 is placed
-            # print("object1_placement['cube4'][0]: ", object1_placement["cube4"][0])
-            # After placing Cube3, track which peg it's on
-            cube4_peg_y = object1_placement["cube4"][0][1]
-            
-            # Cube 3
-            # For Cube3, remove the peg that Cube4 is on from choices
-            available_pegs = [tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-            # Remove the peg that Cube3 is on
-            occupied_peg = None
-            for peg in available_pegs:
-                if abs(peg[1] - cube4_peg_y) < 0.01:  # Check if this is the same peg
-                    occupied_peg = peg
-                    break
-
-            if occupied_peg:
-                available_pegs.remove(occupied_peg)
-
-            # Now Cube3 can only be placed on Cube4 or on available pegs
-            list_choice2 = [object1_placement["cube4"][0]] + available_pegs
-            # print("list_choice2: ", list_choice2)
-            object_2_ontop = list_choice2[np.random.randint(0, 3)]
-            # print("object_2_ontop: ", object_2_ontop)
-            object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-            # print("object2_placement: ", object2_placement)
-
-            # Cube 1
-            list_choice3 = list_choice2.copy()
-            if abs(object2_placement["cube2"][0][1] - list_choice3[0][1]) < 0.01:
-                list_choice3.remove(list_choice3[0])
-            elif abs(object2_placement["cube2"][0][1] - list_choice3[1][1]) < 0.01:
-                list_choice3.remove(list_choice3[1])
-            else:
-                list_choice3.remove(list_choice3[2])
-            list_choice3.append(object2_placement["cube2"][0])
-            # print("list_choice3: ", list_choice3)
-            object_3_ontop = list_choice3[np.random.randint(0, 3)]
-            # print("object_3_ontop: ", object_3_ontop)
-            object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-            # print("object3_placement: ", object3_placement)
-            self.object_placements = object1_placement
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object2_placement)
-            # print("self.object_placements: ", self.object_placements)
-            self.object_placements.update(object3_placement)
-            # print("self.object_placements: ", self.object_placements)
-        
-        else:
-            # Fallback to default
-            object1_placement = bottom_initializer.sample()
-            object2_placement = self.placement_initializer2.sample(reference=object1_placement["cube3"][0], on_top=True)
-            object3_placement = self.placement_initializer3.sample(reference=object2_placement["cube2"][0], on_top=True)
-            self.object_placements = object1_placement
-            self.object_placements.update(object2_placement)
-            self.object_placements.update(object3_placement)
-            block_config = ['cube1', 'cube2', 'cube3']  # Force default config
-        
-        # Store the current block configuration for use by noise application
-        self.current_block_config = block_config
-
     def _reset_internal(self):
         """
         Resets simulation internal configurations.
@@ -914,59 +575,31 @@ class Hanoi(SingleArmEnv):
 
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
-
             # Sample from the placement initializer for pegs
             peg_placements = self.peg_placement_initializer.sample()
             for obj_pos, obj_quat, obj in peg_placements.values():
                 self.sim.model.body_pos[self.sim.model.body_name2id(obj.root_body)] = obj_pos
                 self.sim.model.body_quat[self.sim.model.body_name2id(obj.root_body)] = obj_quat
 
-            # Sample from the placement initializer for cubes
-            if self.random_reset:
-                if self.randomize_block_config:
-                    # Get a random valid block configuration
-                    block_config = self.get_random_block_config()
-                    self.random_reset_with_config(block_config)
-                else:
-                    self.random_reset_f()
-            elif self.randomize_block_config:
-                # Even without random peg placement, we can randomize block configuration
-                block_config = self.get_random_block_config()
-                self.random_reset_with_config(block_config)
-            elif self.reset_state != None:
-                self.reset_positions(self.reset_state)
+            # Set the block configuration
+            self.current_block_config = ['cube1', 'cube2', 'cube3']
+            if self.random_block_selection:
+                self.current_block_config = self.get_random_block_config()
+
+            # Place the blocks
+            if self.random_block_placement:
+                self.place_blocks_randomly()
             else:
-                # Create a constrained initializer for the default case (peg 0)
-                default_initializer = UniformRandomSampler(
-                    name="ObjectSampler",
-                    mujoco_objects=self.cube3,
-                    x_range=[self.pegs_xy_pos[0][0]-0.1, self.pegs_xy_pos[0][0]-0.1],
-                    y_range=[self.pegs_xy_pos[0][1]-0.05, self.pegs_xy_pos[0][1]-0.05],
-                    rotation=0,
-                    ensure_object_boundary_in_range=False,
-                    ensure_valid_placement=True,
-                    reference_pos=self.table_offset,
-                    z_offset=0.01,
-                )
-                object1_placement = default_initializer.sample()
-                object2_placement = self.placement_initializer2.sample(reference=object1_placement["cube3"][0], on_top=True)
-                object3_placement = self.placement_initializer3.sample(reference=object2_placement["cube2"][0], on_top=True)
-                self.object_placements = object1_placement
-                self.object_placements.update(object2_placement)
-                self.object_placements.update(object3_placement)
-                # Store the default block configuration
-                self.current_block_config = ['cube1', 'cube2', 'cube3']
-            # Loop through all objects and reset their positions
-            # print("self.object_placements: ", self.object_placements)
+                self.place_block_tower()
+            
+            # Loop through all objects and set their positions
             for obj_pos, obj_quat, obj in self.object_placements.values():
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
-            # Sync derived state so body_xpos / body_xquat reflect updated qpos before applying noise
             self.sim.forward()
-            # After sim.forward()
-            # print("After sim.forward():")
-            for obj_pos, obj_quat, obj in self.object_placements.values():
-                body_id = self.sim.model.body_name2id(obj.root_body)
-                current_pos = self.sim.data.body_xpos[body_id]
+
+            # for obj_pos, obj_quat, obj in self.object_placements.values():
+            #     body_id = self.sim.model.body_name2id(obj.root_body)
+            #     current_pos = self.sim.data.body_xpos[body_id]
                 # print(f"{obj.name}: target={obj_pos}, current={current_pos}")
 
         # Add tower position noise after cube positions are set
@@ -1018,13 +651,129 @@ class Hanoi(SingleArmEnv):
             
             # Synchronize derived quantities
             self.sim.forward()
+    
+    def get_random_block_config(self):
+        """
+        Generates a random valid Hanoi block configuration.
+        Valid configurations are those where bigger numbers cannot go on top of smaller numbers.
+        Returns a list of block names in order from top to bottom.
+        """
+        # Define all valid configurations (from top to bottom)
+        # Each configuration must follow Hanoi rules: bigger numbers cannot be on top of smaller numbers
+        valid_configs = [
+            ['cube1', 'cube2', 'cube3'],  # Default: 1,2,3
+            ['cube1', 'cube2', 'cube4'],  # 1,2,4
+            ['cube1', 'cube3', 'cube4'],  # 1,3,4
+            ['cube2', 'cube3', 'cube4'],  # 2,3,4
+        ]
+        
+        # Randomly select one configuration
+        return valid_configs[np.random.randint(0, len(valid_configs))]
+
+    def place_block_tower(self):
+        """
+        Places the blocks in the tower configuration.
+        """
+        # Default cube mapping is:
+        #     large_block_placement_initializer: cube3
+        #     medium_block_placement_initializer: cube2
+        #     small_block_placement_initializer: cube1
+
+        # Need to check if the config is different and update the placement
+        # initializers accordingly.
+        large = self.current_block_config[2]
+        medium = self.current_block_config[1]
+        small = self.current_block_config[0]
+        if large == 'cube4':
+            self.large_block_placement_initializer.mujoco_objects = [self.cube4]
+        if medium == 'cube3':
+            self.medium_block_placement_initializer.mujoco_objects = [self.cube3]
+        if small == 'cube2':
+            self.small_block_placement_initializer.mujoco_objects = [self.cube2]
+
+        object1_placement = self.large_block_placement_initializer.sample()
+        object2_placement = self.medium_block_placement_initializer.sample(
+            reference=object1_placement[large][0], on_top=True)
+        object3_placement = self.small_block_placement_initializer.sample(
+            reference=object2_placement[medium][0], on_top=True)
+        self.object_placements = object1_placement
+        self.object_placements.update(object2_placement)
+        self.object_placements.update(object3_placement)
+
+    def place_blocks_randomly(self):
+        """
+        Places the blocks randomly on the pegs adhering to the rules of Towers of Hanoi.
+        """
+        # Default cube mapping is:
+        #     large_block_placement_initializer: cube3
+        #     medium_block_placement_initializer: cube2
+        #     small_block_placement_initializer: cube1
+
+        # Need to check if the config is different and update the placement
+        # initializers accordingly.
+        large = self.current_block_config[2]
+        medium = self.current_block_config[1]
+        small = self.current_block_config[0]
+        if large == 'cube4':
+            self.large_block_placement_initializer.mujoco_objects = [self.cube4]
+        if medium == 'cube3':
+            self.medium_block_placement_initializer.mujoco_objects = [self.cube3]
+        if small == 'cube2':
+            self.small_block_placement_initializer.mujoco_objects = [self.cube2]
+        
+        # Large block
+        random_peg = np.random.randint(0, 3)
+        self.large_block_placement_initializer.x_range = [self.pegs_xy_pos[random_peg][0]-0.1, self.pegs_xy_pos[random_peg][0]-0.1]
+        self.large_block_placement_initializer.y_range = [self.pegs_xy_pos[random_peg][1]-0.05, self.pegs_xy_pos[random_peg][1]-0.05]
+        lg_placement = self.large_block_placement_initializer.sample()
+        lg_placement_y = lg_placement[large][0][1]
+        
+        # Medium block
+        # Get the available placement locations for the medium block (empty pegs and ontop of large block)
+        available_pegs = [tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
+        
+        # Remove the peg that the large block is on
+        occupied_peg = None
+        for peg in available_pegs:
+            if abs(peg[1] - lg_placement_y) < 0.01:  # Check if this is the occupied peg
+                occupied_peg = peg
+                break
+        if occupied_peg:
+            available_pegs.remove(occupied_peg)
+
+        md_placement_opts = [lg_placement[large][0]] + available_pegs
+        md_placement_ontop = md_placement_opts[np.random.randint(0, 3)]
+        md_placement = self.medium_block_placement_initializer.sample(reference=md_placement_ontop, on_top=True)
+        md_placement_y = md_placement[medium][0][1]
+
+        # Small block
+        # Get the available placement locations for the small block (empty pegs and ontop of large or medium block)
+        sm_placement_opts = md_placement_opts.copy() # Copy the list of options to modify
+        # Remove the option that the medium block is now on
+        occupied_opt = None
+        for opt in sm_placement_opts:
+            if abs(md_placement_y - opt[1]) < 0.01:  # Check if this is the spot the medium block is on
+                occupied_opt = opt
+                break
+        if occupied_opt:
+            sm_placement_opts.remove(occupied_opt)
+        
+        sm_placement_opts.append(md_placement[medium][0])  # Add the medium block's position to the list of options
+        sm_placement_ontop = sm_placement_opts[np.random.randint(0, 3)]
+        sm_placement = self.small_block_placement_initializer.sample(reference=sm_placement_ontop, on_top=True)
+
+        self.object_placements = lg_placement
+        self.object_placements.update(md_placement)
+        self.object_placements.update(sm_placement)
 
     def _setup_observables(self):
         """
-        Sets up observables to be used for this environment. Creates object-based observables if enabled
+        Sets up observables to be used for this environment. 
+        Creates object-based observables if enabled
 
         Returns:
-            OrderedDict: Dictionary mapping observable names to its corresponding Observable object
+            OrderedDict: Dictionary mapping observable names to its 
+                corresponding Observable object
         """
         observables = super()._setup_observables()
 
