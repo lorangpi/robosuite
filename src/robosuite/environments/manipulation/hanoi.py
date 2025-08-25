@@ -130,6 +130,14 @@ class Hanoi(SingleArmEnv):
             [multiple / a single] segmentation(s) to use for all cameras. A list of list of str specifies per-camera
             segmentation setting(s) to use.
 
+        random_block_placement (bool): If True, randomizes the initial peg placement for the blocks,
+            while maintaining Hanoi tower rules (bigger numbers cannot go on top of smaller numbers).
+
+        cube_init_pos_noise_std (float): Standard deviation of noise to add to initial cube positions.
+
+        random_block_selection (bool): If True and random_block_placement is True, randomizes the block configuration
+            Valid configurations include: [1,2,3], [1,2,4], [1,3,4], [2,3,4].
+
     Raises:
         AssertionError: [Invalid number of robots specified]
     """
@@ -165,14 +173,17 @@ class Hanoi(SingleArmEnv):
         camera_segmentations=None,  # {None, instance, class, element}
         renderer="mujoco",
         renderer_config=None,
-        random_reset = False,
+        random_block_placement = False,
+        cube_init_pos_noise_std=0.0,
+        random_block_selection=False,
     ):
         self.env_id = "Hanoi"
         # settings for table top
         self.table_full_size = table_full_size
         self.table_friction = table_friction
         self.table_offset = np.array((0, 0, 0.8))
-        self.random_reset = random_reset
+        self.random_block_placement = random_block_placement
+        self.random_block_selection = random_block_selection
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -182,8 +193,10 @@ class Hanoi(SingleArmEnv):
         self.use_object_obs = use_object_obs
 
         # object placement initializer
-        self.reset_state = None
+        # self.reset_state = None
         self.placement_initializer = placement_initializer
+
+        self.cube_init_pos_noise_std = cube_init_pos_noise_std
 
         super().__init__(
             robots=robots,
@@ -327,6 +340,7 @@ class Hanoi(SingleArmEnv):
             "specular": "0.4",
             "shininess": "0.1",
         }
+
         text_number1 = CustomMaterial(
             texture="Number1",
             tex_name="number1",
@@ -358,15 +372,15 @@ class Hanoi(SingleArmEnv):
 
         self.cube1 = BoxObject(
             name="cube1",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.02, 0.02, 0.02],
+            size_max=[0.02, 0.02, 0.02],
             rgba=[1, 0, 0, 1],
             material=text_number1,
         )
         self.cube2 = BoxObject(
             name="cube2",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.0225, 0.0225, 0.0225],
+            size_max=[0.0225, 0.0225, 0.0225],
             rgba=[0, 1, 0, 1],
             material=text_number2,
         )
@@ -379,9 +393,9 @@ class Hanoi(SingleArmEnv):
         )
         self.cube4 = BoxObject(
             name="cube4",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
-            rgba=[0, 1, 0, 1],
+            size_min=[0.0275, 0.0275, 0.0275],
+            size_max=[0.0275, 0.0275, 0.0275],
+            rgba=[1, 1, 0, 1],  # These don't actually change anything
             material=text_number4,
         )
 
@@ -394,11 +408,12 @@ class Hanoi(SingleArmEnv):
         self.pegs_xy_center = [[0, -0.18, 0.8], [0, 0.02, 0.8], [0, 0.22, 0.8]]
         self.peg_radius = 0.0
         
-        cubes = [self.cube1, self.cube2, self.cube3]
+        # Load ALL 4 cubes into the simulation to support different configurations
+        cubes = [self.cube1, self.cube2, self.cube3, self.cube4]
         pegs = [self.visual_peg1, self.visual_peg2, self.visual_peg3]
         self.objects = cubes + pegs
         self.obj_names = [obj.name for obj in self.objects]
-        self.obj_map = {'cube1':self.cube1, 'cube2':self.cube2,'cube3':self.cube3,}
+        self.obj_map = {'cube1':self.cube1, 'cube2':self.cube2,'cube3':self.cube3,'cube4':self.cube4}
 
         # Create placement initializer
         if self.placement_initializer is not None:
@@ -444,22 +459,18 @@ class Hanoi(SingleArmEnv):
                         z_offset=-0.062,
                     ))
 
-            if not(self.random_reset):
-                place = 0
-            else:
-                place = np.random.randint(0, 3)
-            self.placement_initializer1 = UniformRandomSampler(
+            self.large_block_placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube3,
-                x_range=[self.pegs_xy_pos[place][0]-0.1, self.pegs_xy_pos[place][0]-0.1],
-                y_range=[self.pegs_xy_pos[place][1]-0.05, self.pegs_xy_pos[place][1]-0.05],
+                x_range=[self.pegs_xy_pos[0][0]-0.1, self.pegs_xy_pos[0][0]-0.1],
+                y_range=[self.pegs_xy_pos[0][1]-0.05, self.pegs_xy_pos[0][1]-0.05],
                 rotation=0,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-            self.placement_initializer2 = UniformRandomSampler(
+            self.medium_block_placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube2,
                 rotation=0,
@@ -468,7 +479,7 @@ class Hanoi(SingleArmEnv):
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-            self.placement_initializer3 = UniformRandomSampler(
+            self.small_block_placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube1,
                 rotation=0,
@@ -477,7 +488,8 @@ class Hanoi(SingleArmEnv):
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-        self.object_placements = {"cube1":None, "cube2":None, "cube3":None}
+
+        self.object_placements = {"cube1":None, "cube2":None, "cube3":None, "cube4":None}
         # task includes arena, robot, and objects of interest
         self.model = ManipulationTask(
             mujoco_arena=mujoco_arena,
@@ -497,9 +509,7 @@ class Hanoi(SingleArmEnv):
         self.cube1_body_id = self.sim.model.body_name2id(self.cube1.root_body)
         self.cube2_body_id = self.sim.model.body_name2id(self.cube2.root_body)
         self.cube3_body_id = self.sim.model.body_name2id(self.cube3.root_body)
-
-    def set_reset_state(self, state):
-        self.reset_state = state
+        self.cube4_body_id = self.sim.model.body_name2id(self.cube4.root_body)
 
     def reset_positions(self, predicates):
         """
@@ -546,21 +556,6 @@ class Hanoi(SingleArmEnv):
             object_placement = placement_initializer.sample(reference=self.object_placements[onto_obj][onto_obj][0], on_top=True)
         return object_placement
 
-    def random_reset_f(self):
-        object1_placement = self.placement_initializer1.sample()
-        # list all objects that cube2 can be placed on (including pegs)
-        list_choice2 = [object1_placement["cube3"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-        object_2_ontop = list_choice2[np.random.randint(0, 4)]
-        object2_placement = self.placement_initializer2.sample(reference=object_2_ontop, on_top=True)
-        # list all objects that cube1 can be placed on (including pegs)
-        list_choice3 = [object1_placement["cube3"][0], object2_placement["cube2"][0], tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
-        list_choice3.remove(object_2_ontop)
-        object_3_ontop = list_choice3[np.random.randint(0, 4)]
-        object3_placement = self.placement_initializer3.sample(reference=object_3_ontop, on_top=True)
-        self.object_placements = object1_placement
-        self.object_placements.update(object2_placement)
-        self.object_placements.update(object3_placement)
-
     def _reset_internal(self):
         """
         Resets simulation internal configurations.
@@ -571,6 +566,7 @@ class Hanoi(SingleArmEnv):
             "cube1": self.sim.model.body_name2id(self.cube1.root_body),
             "cube2": self.sim.model.body_name2id(self.cube2.root_body),
             "cube3": self.sim.model.body_name2id(self.cube3.root_body),
+            "cube4": self.sim.model.body_name2id(self.cube4.root_body),
             "peg1": self.sim.model.body_name2id(self.visual_peg1.root_body),
             "peg2": self.sim.model.body_name2id(self.visual_peg2.root_body),
             "peg3": self.sim.model.body_name2id(self.visual_peg3.root_body),
@@ -579,35 +575,205 @@ class Hanoi(SingleArmEnv):
 
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
-
             # Sample from the placement initializer for pegs
             peg_placements = self.peg_placement_initializer.sample()
             for obj_pos, obj_quat, obj in peg_placements.values():
                 self.sim.model.body_pos[self.sim.model.body_name2id(obj.root_body)] = obj_pos
                 self.sim.model.body_quat[self.sim.model.body_name2id(obj.root_body)] = obj_quat
 
-            # Sample from the placement initializer for cubes
-            if self.random_reset:
-                self.random_reset_f()
-            elif self.reset_state != None:
-                self.reset_positions(self.reset_state)
+            # Set the block configuration
+            self.current_block_config = ['cube1', 'cube2', 'cube3']
+            if self.random_block_selection:
+                self.current_block_config = self.get_random_block_config()
+
+            # Place the blocks
+            if self.random_block_placement:
+                self.place_blocks_randomly()
             else:
-                object1_placement = self.placement_initializer1.sample()
-                object2_placement = self.placement_initializer2.sample(reference=object1_placement["cube3"][0], on_top=True)
-                object3_placement = self.placement_initializer3.sample(reference=object2_placement["cube2"][0], on_top=True)
-                self.object_placements = object1_placement
-                self.object_placements.update(object2_placement)
-                self.object_placements.update(object3_placement)
-            # Loop through all objects and reset their positions
+                self.place_block_tower()
+            
+            # Loop through all objects and set their positions
             for obj_pos, obj_quat, obj in self.object_placements.values():
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
+            self.sim.forward()
+
+            # for obj_pos, obj_quat, obj in self.object_placements.values():
+            #     body_id = self.sim.model.body_name2id(obj.root_body)
+            #     current_pos = self.sim.data.body_xpos[body_id]
+                # print(f"{obj.name}: target={obj_pos}, current={current_pos}")
+
+        # Add tower position noise after cube positions are set
+        if self.cube_init_pos_noise_std > 0:
+            # Get the current block configuration to determine which cubes are active
+            if hasattr(self, 'current_block_config'):
+                active_cubes = self.current_block_config
+            else:
+                # Default configuration if none is set
+                active_cubes = ['cube1', 'cube2', 'cube3']
+            
+            # Group cubes by their current XY position (which peg they're on)
+            peg_groups = {}
+            for cube_name in active_cubes:
+                cube = self.obj_map[cube_name]
+                body_id = self.sim.model.body_name2id(cube.root_body)
+                current_xy = self.sim.data.body_xpos[body_id][:2]
+                
+                # Round to handle floating point precision
+                xy_key = tuple(np.round(current_xy, 3))
+                if xy_key not in peg_groups:
+                    peg_groups[xy_key] = []
+                peg_groups[xy_key].append(cube)
+            
+            # Apply noise to each peg group
+            for peg_xy, cubes_on_peg in peg_groups.items():
+                if len(cubes_on_peg) > 1:
+                    # Multiple cubes on this peg - apply identical XY noise (stacked)
+                    xy_noise = np.random.normal(0, self.cube_init_pos_noise_std, size=2)
+                    target_xy = np.array(peg_xy) + xy_noise
+                    
+                    for cube in cubes_on_peg:
+                        body_id = self.sim.model.body_name2id(cube.root_body)
+                        pos = np.array(self.sim.data.body_xpos[body_id])
+                        quat = np.array(self.sim.data.body_xquat[body_id])
+                        pos[:2] = target_xy  # Force identical XY for stacked cubes
+                        self.sim.data.set_joint_qpos(cube.joints[0], np.concatenate([pos, quat]))
+                else:
+                    # Single cube on this peg - apply individual noise
+                    cube = cubes_on_peg[0]
+                    body_id = self.sim.model.body_name2id(cube.root_body)
+                    current_pos = np.array(self.sim.data.body_xpos[body_id])
+                    current_quat = np.array(self.sim.data.body_xquat[body_id])
+                    
+                    xy_noise = np.random.normal(0, self.cube_init_pos_noise_std, size=2)
+                    current_pos[:2] += xy_noise  # Add noise to existing XY
+                    
+                    self.sim.data.set_joint_qpos(cube.joints[0], np.concatenate([current_pos, current_quat]))
+            
+            # Synchronize derived quantities
+            self.sim.forward()
+    
+    def get_random_block_config(self):
+        """
+        Generates a random valid Hanoi block configuration.
+        Valid configurations are those where bigger numbers cannot go on top of smaller numbers.
+        Returns a list of block names in order from top to bottom.
+        """
+        # Define all valid configurations (from top to bottom)
+        # Each configuration must follow Hanoi rules: bigger numbers cannot be on top of smaller numbers
+        valid_configs = [
+            ['cube1', 'cube2', 'cube3'],  # Default: 1,2,3
+            ['cube1', 'cube2', 'cube4'],  # 1,2,4
+            ['cube1', 'cube3', 'cube4'],  # 1,3,4
+            ['cube2', 'cube3', 'cube4'],  # 2,3,4
+        ]
+        
+        # Randomly select one configuration
+        return valid_configs[np.random.randint(0, len(valid_configs))]
+
+    def place_block_tower(self):
+        """
+        Places the blocks in the tower configuration.
+        """
+        # Default cube mapping is:
+        #     large_block_placement_initializer: cube3
+        #     medium_block_placement_initializer: cube2
+        #     small_block_placement_initializer: cube1
+
+        # Need to check if the config is different and update the placement
+        # initializers accordingly.
+        large = self.current_block_config[2]
+        medium = self.current_block_config[1]
+        small = self.current_block_config[0]
+        if large == 'cube4':
+            self.large_block_placement_initializer.mujoco_objects = [self.cube4]
+        if medium == 'cube3':
+            self.medium_block_placement_initializer.mujoco_objects = [self.cube3]
+        if small == 'cube2':
+            self.small_block_placement_initializer.mujoco_objects = [self.cube2]
+
+        object1_placement = self.large_block_placement_initializer.sample()
+        object2_placement = self.medium_block_placement_initializer.sample(
+            reference=object1_placement[large][0], on_top=True)
+        object3_placement = self.small_block_placement_initializer.sample(
+            reference=object2_placement[medium][0], on_top=True)
+        self.object_placements = object1_placement
+        self.object_placements.update(object2_placement)
+        self.object_placements.update(object3_placement)
+
+    def place_blocks_randomly(self):
+        """
+        Places the blocks randomly on the pegs adhering to the rules of Towers of Hanoi.
+        """
+        # Default cube mapping is:
+        #     large_block_placement_initializer: cube3
+        #     medium_block_placement_initializer: cube2
+        #     small_block_placement_initializer: cube1
+
+        # Need to check if the config is different and update the placement
+        # initializers accordingly.
+        large = self.current_block_config[2]
+        medium = self.current_block_config[1]
+        small = self.current_block_config[0]
+        if large == 'cube4':
+            self.large_block_placement_initializer.mujoco_objects = [self.cube4]
+        if medium == 'cube3':
+            self.medium_block_placement_initializer.mujoco_objects = [self.cube3]
+        if small == 'cube2':
+            self.small_block_placement_initializer.mujoco_objects = [self.cube2]
+        
+        # Large block
+        random_peg = np.random.randint(0, 3)
+        self.large_block_placement_initializer.x_range = [self.pegs_xy_pos[random_peg][0]-0.1, self.pegs_xy_pos[random_peg][0]-0.1]
+        self.large_block_placement_initializer.y_range = [self.pegs_xy_pos[random_peg][1]-0.05, self.pegs_xy_pos[random_peg][1]-0.05]
+        lg_placement = self.large_block_placement_initializer.sample()
+        lg_placement_y = lg_placement[large][0][1]
+        
+        # Medium block
+        # Get the available placement locations for the medium block (empty pegs and ontop of large block)
+        available_pegs = [tuple(self.pegs_xy_center[0]), tuple(self.pegs_xy_center[1]), tuple(self.pegs_xy_center[2])]
+        
+        # Remove the peg that the large block is on
+        occupied_peg = None
+        for peg in available_pegs:
+            if abs(peg[1] - lg_placement_y) < 0.01:  # Check if this is the occupied peg
+                occupied_peg = peg
+                break
+        if occupied_peg:
+            available_pegs.remove(occupied_peg)
+
+        md_placement_opts = [lg_placement[large][0]] + available_pegs
+        md_placement_ontop = md_placement_opts[np.random.randint(0, 3)]
+        md_placement = self.medium_block_placement_initializer.sample(reference=md_placement_ontop, on_top=True)
+        md_placement_y = md_placement[medium][0][1]
+
+        # Small block
+        # Get the available placement locations for the small block (empty pegs and ontop of large or medium block)
+        sm_placement_opts = md_placement_opts.copy() # Copy the list of options to modify
+        # Remove the option that the medium block is now on
+        occupied_opt = None
+        for opt in sm_placement_opts:
+            if abs(md_placement_y - opt[1]) < 0.01:  # Check if this is the spot the medium block is on
+                occupied_opt = opt
+                break
+        if occupied_opt:
+            sm_placement_opts.remove(occupied_opt)
+        
+        sm_placement_opts.append(md_placement[medium][0])  # Add the medium block's position to the list of options
+        sm_placement_ontop = sm_placement_opts[np.random.randint(0, 3)]
+        sm_placement = self.small_block_placement_initializer.sample(reference=sm_placement_ontop, on_top=True)
+
+        self.object_placements = lg_placement
+        self.object_placements.update(md_placement)
+        self.object_placements.update(sm_placement)
 
     def _setup_observables(self):
         """
-        Sets up observables to be used for this environment. Creates object-based observables if enabled
+        Sets up observables to be used for this environment. 
+        Creates object-based observables if enabled
 
         Returns:
-            OrderedDict: Dictionary mapping observable names to its corresponding Observable object
+            OrderedDict: Dictionary mapping observable names to its 
+                corresponding Observable object
         """
         observables = super()._setup_observables()
 
@@ -649,9 +815,17 @@ class Hanoi(SingleArmEnv):
                 return convert_quat(np.array(self.sim.data.body_xquat[self.cube3_body_id]), to="xyzw")
 
             @sensor(modality=modality)
+            def cube4_pos(obs_cache):
+                return np.array(self.sim.data.body_xpos[self.cube4_body_id])
+
+            @sensor(modality=modality)
+            def cube4_quat(obs_cache):
+                return convert_quat(np.array(self.sim.data.body_xquat[self.cube4_body_id]), to="xyzw")
+
+            @sensor(modality=modality)
             def gripper_to_cube1(obs_cache):
-                print("gripper_to_cube1: ", obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"] if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
-                    else np.zeros(3))
+                #print("gripper_to_cube1: ", obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"] if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                #    else np.zeros(3))
                 return (
                     obs_cache["cube1_pos"] - obs_cache[f"{pf}eef_pos"]
                     if "cube1_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
@@ -670,9 +844,9 @@ class Hanoi(SingleArmEnv):
 
             @sensor(modality=modality)
             def gripper_to_cube3(obs_cache):
-                print("gripper_to_cube3: ", obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"] if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
-                    else np.zeros(3))
-                print("")
+                #print("gripper_to_cube3: ", obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"] if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
+                #    else np.zeros(3))
+                #print("")
                 return (
                     obs_cache["cube3_pos"] - obs_cache[f"{pf}eef_pos"]
                     if "cube3_pos" in obs_cache and f"{pf}eef_pos" in obs_cache
@@ -704,7 +878,7 @@ class Hanoi(SingleArmEnv):
                 )
             
             #sensors = [cube1_pos, cube1_quat, cube2_pos, cube2_quat, cube3_pos, cube3_quat, gripper_to_cube1, gripper_to_cube2, gripper_to_cube3, cube1_to_cube2, cube1_to_cube3, cube2_to_cube3]
-            sensors = [cube1_pos, cube1_quat, cube2_pos, cube2_quat, cube3_pos, cube3_quat]
+            sensors = [cube1_pos, cube1_quat, cube2_pos, cube2_quat, cube3_pos, cube3_quat, cube4_pos, cube4_quat]
             names = [s.__name__ for s in sensors]
 
             # Create observables
