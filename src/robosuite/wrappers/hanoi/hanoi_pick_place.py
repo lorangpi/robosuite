@@ -395,6 +395,7 @@ class PickPlaceWrapper(gym.Wrapper):
             obs = self.filter_obs(obs)
             obs_copy = self.simple_obs(obs_copy)
             info["obs_base"] = obs_copy
+            info["agentview"] = self.env.env._get_observations()["agentview_image"]
         else:
             obs_filter = copy.deepcopy(obs)
             obs = self.simple_obs(obs)
