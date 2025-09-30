@@ -167,7 +167,9 @@ class Hanoi4x3(SingleArmEnv):
         renderer_config=None,
         random_reset = False,
         random_block_selection=False,
-        random_block_placement=False
+        random_block_placement=False,
+        cube_init_pos_noise_std=0.0,
+        place_block_tower=0
     ):
         self.env_id = "Hanoi4x3"
         # settings for table top
