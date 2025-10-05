@@ -361,6 +361,16 @@ class HanoiDetector:
         self.area_size = self.env.peg_radius
         self.max_distance = 10 #max distance for the robotic arm in meters
 
+    def get_all_objects_pos(self):
+        # Return a dict of all object positions
+        positions = {}
+        for obj in self.objects:
+            body_id = self.env.sim.model.body_name2id(self.object_id[obj])
+            positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
+        # Add eef position
+        positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        return positions
+
     def at(self, obj, area, return_distance=False):
         obj_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj]]
         dist = np.linalg.norm(obj_pos - self.area_pos[area])
@@ -561,6 +571,16 @@ class NutAssemblyDetector:
                 return obj
         return None
 
+    def get_all_objects_pos(self):
+        # Return a dict of all object positions
+        positions = {}
+        for obj in self.objects:
+            body_id = self.env.sim.model.body_name2id(self.object_id[obj])
+            positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
+        # Add eef position
+        positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id('gripper0_eef')])
+        return positions
+
     def grasped(self, obj):
         active_obj = self.select_object(obj)
 
@@ -760,6 +780,16 @@ class KitchenDetector:
         print(f'Object {obj_name} not found.')
         return None
 
+    def get_all_objects_pos(self):
+        # Return a dict of all object positions
+        positions = {}
+        for obj in self.objects:
+            body_id = self.env.sim.model.body_name2id(self.object_id[obj])
+            positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
+        # Add eef position
+        positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id('gripper0_eef')])
+        return positions
+
     def grasped(self, obj):
         active_obj = self.select_object(obj)
 
@@ -800,7 +830,7 @@ class KitchenDetector:
             elif "pot" in obj:
                 return bool(dist_xy < 0.005)#bool(dist_xy < 0.02)#bool(dist_xy < 0.005)# and bool(dist_x < 0.02)
             elif "stove" in obj or "serving" in obj:
-                return bool(dist_xy < 0.05)#bool(dist_xy < 0.05)#return bool(dist_xy < 0.004)
+                return bool(dist_xy < 0.08)#bool(dist_xy < 0.05)#return bool(dist_xy < 0.004)
             else:
                 return bool(dist_xy < 0.004)
     
@@ -853,6 +883,9 @@ class KitchenDetector:
         dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
         if "pot" in obj2_str:
             return bool(dist_xy < 0.04 and obj1_pos[2] > obj2_pos[2]+0.00001 and dist_z < 0.15)
+        elif "stove" in obj2_str or "serving" in obj2_str:
+            #print(dist_xy, dist_z)
+            return bool(dist_xy < 0.08 and obj1_pos[2] > obj2_pos[2]+0.00001 and dist_z < 0.035)
         else:
             return bool(dist_xy < 0.055 and obj1_pos[2] > obj2_pos[2]+0.00001 and dist_z < 0.055)
 
