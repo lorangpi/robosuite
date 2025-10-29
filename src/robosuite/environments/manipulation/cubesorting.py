@@ -358,8 +358,8 @@ class CubeSorting(SingleArmEnv):
         # Platform 2: Red (for large/red cubes)
         self.platform1 = BoxObject(
             name="platform1",
-            size_min=[0.06, 0.06, 0.001],  # Flat platform: 12cm x 12cm x 1cm
-            size_max=[0.06, 0.06, 0.001],
+            size_min=[0.06, 0.06, 0.0001],  # Flat platform: 12cm x 12cm x 1cm
+            size_max=[0.06, 0.06, 0.0001],
             rgba=[0, 0, 1, 1],  # Blue for small cubes
             obj_type="visual",
             joints=None,
@@ -367,8 +367,8 @@ class CubeSorting(SingleArmEnv):
 
         self.platform2 = BoxObject(
             name="platform2",
-            size_min=[0.06, 0.06, 0.001],  # Flat platform: 12cm x 12cm x 1cm
-            size_max=[0.06, 0.06, 0.001],
+            size_min=[0.06, 0.06, 0.0001],  # Flat platform: 12cm x 12cm x 1cm
+            size_max=[0.06, 0.06, 0.0001],
             rgba=[1, 0, 0, 1],  # Red for large cubes
             obj_type="visual",
             joints=None,
