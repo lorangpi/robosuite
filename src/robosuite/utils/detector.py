@@ -232,6 +232,8 @@ class PickPlaceDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.object_areas:
+            positions[area] = self.area_pos[area]
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -492,6 +494,8 @@ class HanoiDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.object_areas:
+            positions[area] = self.area_pos[area]
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -568,6 +572,8 @@ class NutAssemblyDetector:
         self.objects = ['roundnut', 'squarenut']
         self.object_id = {'roundnut': 'RoundNut_main', 'squarenut': 'SquareNut_main', 'squarepeg': 'peg1', 'roundpeg': 'peg2', 'gripper': 'gripper0_eef'}
         self.grippers = ['gripper']
+        self.objects_areas = ['squarepeg', 'roundpeg']
+        self.areas_pos = {'squarepeg': np.array(self.env.sim.data.body_xpos[self.env.peg1_body_id]), 'roundpeg': np.array(self.env.sim.data.body_xpos[self.env.peg2_body_id])}
         self.max_distance = 10 #max distance for the robotic arm in meters
 
     def select_object(self, obj_name):
@@ -681,6 +687,8 @@ class NutAssemblyDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.object_areas:
+            positions[area] = self.area_pos[area]
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -777,6 +785,8 @@ class KitchenDetector:
         self.grippers = ['gripper']
         #self.area_pos = {'pot': self.env.sim.data.body_xpos[self.env.sim.model.body_name2id()]}
         self.max_distance = 10 #max distance for the robotic arm in meters
+        self.objects_areas = ['stove', 'serving']
+        self.areas_pos = {'stove': np.array(self.env.sim.data.body_xpos[self.env.stove_object_1]), 'serving': np.array(self.env.sim.data.body_xpos[self.env.serving_region])}
 
     def select_object(self, obj_name):
         """
@@ -905,6 +915,8 @@ class KitchenDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.objects_areas:
+            positions[area] = self.areas_pos[area]
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -989,6 +1001,7 @@ class CubeSortingDetector:
         self.max_distance = 10  # max distance for the robotic arm in meters
         self.object_id = {f'cube{i}': env.cubes[i].name+"_main" for i in range(self.num_cubes)}
         self.object_id.update({'platform1': 'platform1_main', 'platform2': 'platform2_main'})
+        self.areas_pos = {'platform1': np.array(self.env.platform1_pos), 'platform2': np.array(self.env.platform2_pos)}
 
     def select_object(self, obj_name):
         """Select cube object by name."""
@@ -1106,6 +1119,18 @@ class CubeSortingDetector:
             return z_dist
         else:
             return bool(z_dist < 0.1)
+    
+    def type_match(self, obj, platform):
+        """Check if cube type matches platform."""
+        cube_idx = int(obj.replace('cube', ''))
+        size = self.env.cube_sizes[cube_idx]
+        
+        if platform == 'platform1' and size == 'small':
+            return True
+        elif platform == 'platform2' and size == 'large':
+            return True
+        else:
+            return False
         
     def grasped(self, obj):
         """Check if object is grasped by gripper."""
@@ -1182,6 +1207,8 @@ class CubeSortingDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.platforms:
+            positions[area] = self.areas_pos[area]
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -1194,6 +1221,14 @@ class CubeSortingDetector:
             if binary_to_float:
                 small_value = float(small_value)
             groundings[f'small({obj})'] = small_value
+
+        # Type match predicates
+        for obj in self.objects:
+            for platform in self.platforms:
+                type_match_value = self.type_match(obj, platform)
+                if binary_to_float:
+                    type_match_value = float(type_match_value)
+                groundings[f'type_match({obj},{platform})'] = type_match_value
 
         # Grasped predicates
         for obj in self.objects:
@@ -1297,6 +1332,7 @@ class AssemblyLineSortingDetector:
         self.object_id = {f'cube{i}': env.cubes[i].name+"_main" for i in range(self.num_cubes)}
         self.object_id.update({f'bin{i}': env.bins[i].name+"_main" for i in range(self.num_bins)})
         self.max_distance = 10
+        self.areas_pos = {f'bin{i}': np.array(self.env.bin_positions[i]) for i in range(self.num_bins)}
 
     def select_object(self, obj_name):
         """Select cube object by name."""
@@ -1493,6 +1529,8 @@ class AssemblyLineSortingDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.bins:
+            positions[area] = self.areas_pos[area]
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -1614,6 +1652,7 @@ class HeightStackingDetector:
         self.max_distance = 10
         self.object_id = {f'cube{i}': env.cubes[i].name+"_main" for i in range(self.max_cubes)}
         self.object_id.update({'platform': 'platform_main'})
+        self.areas_pos = {'platform': np.array(self.env.platform_pos)}
 
     def select_object(self, obj_name):
         """Select cube object by name."""
@@ -1809,6 +1848,8 @@ class HeightStackingDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.areas_pos:
+            positions[area] = self.areas_pos[area]
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -1929,6 +1970,8 @@ class PatternReplicationDetector:
         self.object_id.update({f'ref_cube{i}': env.reference_cubes[i].name+"_main" for i in range(env.num_cubes)})
         self.object_id.update({'reference_platform': "platform1_main",
                                'target_platform': "target_platform_main"})
+        self.areas_pos = {'reference_platform': np.array(self.env.reference_platform_pos),
+                          'target_platform': np.array(self.env.target_platform_pos)}
 
     def select_object(self, obj_name):
         """Select movable cube object by name."""
@@ -2115,6 +2158,8 @@ class PatternReplicationDetector:
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
+        for area in self.platforms:
+            positions[area] = self.areas_pos[area]
         return positions
 
         
