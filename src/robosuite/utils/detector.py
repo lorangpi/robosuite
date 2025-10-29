@@ -1106,7 +1106,7 @@ class CubeSortingDetector:
         
         if return_distance:
             return aperture
-        return bool(aperture > 0.13)
+        return bool(aperture > 0.11)
 
     def picked_up(self, obj, return_distance=False):
         """Check if cube has been picked up."""
@@ -1472,7 +1472,7 @@ class AssemblyLineSortingDetector:
         
         if return_distance:
             return aperture
-        return bool(aperture > 0.13)
+        return bool(aperture > 0.11)
 
     def picked_up(self, obj, return_distance=False):
         """Check if cube has been picked up."""
@@ -1809,7 +1809,7 @@ class HeightStackingDetector:
         
         if return_distance:
             return aperture
-        return bool(aperture > 0.13)
+        return bool(aperture > 0.11)
 
     def picked_up(self, obj, return_distance=False):
         """Check if cube has been picked up."""
@@ -2135,7 +2135,7 @@ class PatternReplicationDetector:
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
         if return_distance:
             return aperture
-        return bool(aperture > 0.13)
+        return bool(aperture > 0.11)
     
     def picked_up(self, obj, return_distance=False):
         """Check if movable cube has been picked up."""
