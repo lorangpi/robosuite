@@ -382,8 +382,8 @@ class CubeSorting(SingleArmEnv):
         self.platform2_pos = np.array([self.line_x, 0.26, self.table_offset[2] + 0.005])
         
         # Cube placement range (between the two platforms)
-        self.line_y_start = -0.14
-        self.line_y_end = 0.14
+        self.line_y_start = -0.17
+        self.line_y_end = 0.17
         
         self.objects = self.cubes + [self.platform1, self.platform2]
 
