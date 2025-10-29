@@ -392,8 +392,8 @@ class AssemblyLineSorting(SingleArmEnv):
             color_name, rgba = self.color_categories[i]
             bin_obj = BoxObject(
                 name=f"bin{i}",
-                size_min=[0.06, 0.06, 0.001],  # Flat platform: 12cm x 12cm x 1cm
-                size_max=[0.06, 0.06, 0.001],
+                size_min=[0.06, 0.06, 0.0001],  # Flat platform: 12cm x 12cm x 1cm
+                size_max=[0.06, 0.06, 0.0001],
                 rgba=rgba,  # Match the color category
                 obj_type="visual",  # Make it visual only
                 joints=None,  # No joints

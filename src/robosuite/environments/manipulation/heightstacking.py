@@ -204,7 +204,7 @@ class HeightStacking(SingleArmEnv):
         self.use_object_obs = use_object_obs
         
         # Platform position (center of table)
-        self.platform_pos = np.array([0.00, 0.22, self.table_offset[2] + 0.005])
+        self.platform_pos = np.array([0.00, 0.24, self.table_offset[2] + 0.005])
 
         super().__init__(
             robots=robots,
@@ -417,8 +417,8 @@ class HeightStacking(SingleArmEnv):
         # Create stacking platform (visual marker at center)
         self.platform = BoxObject(
             name="platform",
-            size_min=[0.06, 0.06, 0.001],  # 12cm x 12cm x 0.2cm
-            size_max=[0.06, 0.06, 0.001],
+            size_min=[0.06, 0.06, 0.0001],  # 12cm x 12cm x 0.2cm
+            size_max=[0.06, 0.06, 0.0001],
             rgba=[0.5, 0.5, 0.5, 1],  # Gray platform
             obj_type="visual",
             joints=None,
@@ -426,7 +426,7 @@ class HeightStacking(SingleArmEnv):
         
         # Initial line position for cubes (x=0, along y-axis)
         self.line_x = 0.00
-        self.line_y_start = -0.27
+        self.line_y_start = -0.23
         self.line_y_end = 0.12
         
         self.objects = self.cubes + [self.platform]

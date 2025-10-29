@@ -210,8 +210,8 @@ class PatternReplication(SingleArmEnv):
         
         # Platform positions - both on same x line
         self.line_x = 0.05
-        self.reference_platform_pos = np.array([self.line_x, -0.25, self.table_offset[2] + 0.005])
-        self.target_platform_pos = np.array([self.line_x, 0.25, self.table_offset[2] + 0.005])
+        self.reference_platform_pos = np.array([self.line_x, -0.21, self.table_offset[2] + 0.005])
+        self.target_platform_pos = np.array([self.line_x, 0.21, self.table_offset[2] + 0.005])
         
         # Tolerance for position matching (2cm)
         self.position_tolerance = 0.02
@@ -508,8 +508,8 @@ class PatternReplication(SingleArmEnv):
         # Create platforms
         self.reference_platform = BoxObject(
             name="reference_platform",
-            size_min=[0.06, 0.06, 0.001],
-            size_max=[0.06, 0.06, 0.001],
+            size_min=[0.06, 0.06, 0.0001],
+            size_max=[0.06, 0.06, 0.0001],
             rgba=[0.3, 0.3, 0.3, 0.7],  # Dark gray, semi-transparent
             obj_type="visual",
             joints=None,
@@ -517,8 +517,8 @@ class PatternReplication(SingleArmEnv):
         
         self.target_platform = BoxObject(
             name="target_platform",
-            size_min=[0.06, 0.06, 0.001],
-            size_max=[0.06, 0.06, 0.001],
+            size_min=[0.06, 0.06, 0.0001],
+            size_max=[0.06, 0.06, 0.0001],
             rgba=[0.7, 0.7, 0.7, 1.0],  # Light gray, opaque
             obj_type="visual",
             joints=None,
