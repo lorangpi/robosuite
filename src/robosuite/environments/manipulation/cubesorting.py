@@ -331,7 +331,7 @@ class CubeSorting(SingleArmEnv):
             mat_attrib=mat_attrib,
         )
 
-        map_textures = {"blue": text_number1, "red": text_number2, "green": text_number3, "yellow": text_number4}
+        map_textures = {"small": text_number1, "large": text_number2}
 
         # Randomly assign sizes to cubes (approximately half small, half large)
         for i in range(self.num_cubes):
@@ -347,7 +347,7 @@ class CubeSorting(SingleArmEnv):
                 size_min=[size, size, size],
                 size_max=[size, size, size],
                 rgba=rgba,
-                material=map_textures[color],
+                material=map_textures[size_type],
             )
             
             self.cubes.append(cube)
@@ -358,22 +358,22 @@ class CubeSorting(SingleArmEnv):
         # Platform 2: Red (for large/red cubes)
         self.platform1 = BoxObject(
             name="platform1",
-            size_min=[0.06, 0.06, 0.005],  # Flat platform: 12cm x 12cm x 1cm
-            size_max=[0.06, 0.06, 0.005],
+            size_min=[0.06, 0.06, 0.001],  # Flat platform: 12cm x 12cm x 1cm
+            size_max=[0.06, 0.06, 0.001],
             rgba=[0, 0, 1, 1],  # Blue for small cubes
             obj_type="visual",
             joints=None,
         )
-        
+
         self.platform2 = BoxObject(
             name="platform2",
-            size_min=[0.06, 0.06, 0.005],  # Flat platform: 12cm x 12cm x 1cm
-            size_max=[0.06, 0.06, 0.005],
+            size_min=[0.06, 0.06, 0.001],  # Flat platform: 12cm x 12cm x 1cm
+            size_max=[0.06, 0.06, 0.001],
             rgba=[1, 0, 0, 1],  # Red for large cubes
             obj_type="visual",
             joints=None,
         )
-        
+
         # All objects on the same line (y-axis)
         self.line_x = 0.05
         
