@@ -1477,7 +1477,7 @@ class AssemblyLineSortingDetector:
     def picked_up(self, obj, return_distance=False):
         """Check if cube has been picked up."""
         cube_idx = int(obj.replace('cube', ''))
-        z_target = self.env.table_offset[2] + 0.25
+        z_target = self.env.table_offset[2] + 0.15
         object_z_loc = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]][2]
         z_dist = z_target - object_z_loc
         
