@@ -1171,7 +1171,7 @@ class CubeSortingDetector:
             obj_pos = self.env.sim.data.body_xpos[obj_body]
             other_pos = self.env.sim.data.body_xpos[other_body]
             dist_xy = np.linalg.norm(obj_pos[:-1] - other_pos[:-1])
-            dist_z = other_pos[2] - obj_pos[2]
+            dist_z = obj_pos[2] - other_pos[2]
             if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
                 return True
             return False
@@ -1380,7 +1380,7 @@ class AssemblyLineSortingDetector:
             obj_pos = self.env.sim.data.body_xpos[obj_body]
             other_pos = self.env.sim.data.body_xpos[other_body]
             dist_xy = np.linalg.norm(obj_pos[:-1] - other_pos[:-1])
-            dist_z = other_pos[2] - obj_pos[2]
+            dist_z = obj_pos[2] - other_pos[2]
             if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
                 return True
             return False
@@ -1705,7 +1705,12 @@ class HeightStackingDetector:
             obj_pos = self.env.sim.data.body_xpos[obj_body]
             other_pos = self.env.sim.data.body_xpos[other_body]
             dist_xy = np.linalg.norm(obj_pos[:-1] - other_pos[:-1])
-            dist_z = other_pos[2] - obj_pos[2]
+            dist_z = obj_pos[2] - other_pos[2]
+            #if obj1 == "cube1" and obj2 == "cube2":
+                # print(f"Checking on: dist_xy={dist_xy}, dist_z={dist_z}")
+                # print(f"obj_pos={obj_pos}, other_pos={other_pos}")
+                # print("dist_xy < 0.06:", dist_xy < 0.06)
+                # print("0 < dist_z < 0.05:", 0 < dist_z < 0.05)
             if dist_xy < 0.06 and dist_z > 0 and dist_z < 0.05:
                 return True
             return False
@@ -1927,7 +1932,7 @@ class HeightStackingDetector:
         for obj1 in self.objects:
             for obj2 in self.objects:
                 if obj1 != obj2:
-                    on_cube_value = self.on_cube(obj1, obj2)
+                    on_cube_value = self.on(obj1, obj2)
                     if binary_to_float:
                         on_cube_value = float(on_cube_value)
                     groundings[f'on({obj1},{obj2})'] = on_cube_value
