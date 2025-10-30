@@ -1706,7 +1706,7 @@ class HeightStackingDetector:
             other_pos = self.env.sim.data.body_xpos[other_body]
             dist_xy = np.linalg.norm(obj_pos[:-1] - other_pos[:-1])
             dist_z = other_pos[2] - obj_pos[2]
-            if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
+            if dist_xy < 0.06 and dist_z > 0 and dist_z < 0.05:
                 return True
             return False
         else:
@@ -1731,7 +1731,7 @@ class HeightStackingDetector:
                 other_pos = self.env.sim.data.body_xpos[other_body]
                 dist_xy = np.linalg.norm(obj_pos[:-1] - other_pos[:-1])
                 dist_z = other_pos[2] - obj_pos[2]
-                if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
+                if dist_xy < 0.06 and dist_z > 0 and dist_z < 0.05:
                     return False
         return True
 
@@ -1755,7 +1755,7 @@ class HeightStackingDetector:
         if return_distance:
             return dist_xy
         else:
-            return bool(dist_xy < 0.003)
+            return bool(dist_xy < 0.002)
 
     def at_grab_level(self, gripper, obj, return_distance=False):
         """Check if gripper is at same height as object."""

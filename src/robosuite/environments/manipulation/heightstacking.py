@@ -324,7 +324,7 @@ class HeightStacking(SingleArmEnv):
         # Check if cube is within platform boundaries
         x_on = abs(cube_pos[0] - platform_pos[0]) < platform_half_size
         y_on = abs(cube_pos[1] - platform_pos[1]) < platform_half_size
-        z_on = cube_pos[2] > platform_pos[2] and cube_pos[2] < platform_pos[2] + 0.1  # Within reasonable height
+        z_on = cube_pos[2] > platform_pos[2] and cube_pos[2] < platform_pos[2] + 0.05  # Within reasonable height
         
         return x_on and y_on and z_on
 
