@@ -264,7 +264,7 @@ class CubeSorting(SingleArmEnv):
         x_on = abs(cube_pos[0] - platform_pos[0]) < platform_half_size
         y_on = abs(cube_pos[1] - platform_pos[1]) < platform_half_size
         z_on = cube_pos[2] > self.table_offset[2] #+ 0.005  # Just above the platform
-        
+        z_on = z_on and cube_pos[2] < (self.table_offset[2] + 0.05)  # Below a certain height
         return x_on and y_on and z_on
 
     def _load_model(self):

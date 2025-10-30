@@ -92,13 +92,13 @@ class PickPlaceDetector:
         if obj == 'door':
             return None
         active_obj = self.select_object(obj)
-        z_target = self.env.bin1_pos[2] + 0.25
+        z_target = self.env.bin1_pos[2] + 0.15
         object_z_loc = self.env.sim.data.body_xpos[self.env.obj_body_id[active_obj.name]][2]
-        z_dist = z_target - object_z_loc
+        z_dist = object_z_loc - z_target
         if return_distance:
             return z_dist
         else:
-            return bool(z_dist < 0.15)
+            return bool(z_dist > 0.1)
 
     def dropped_off(self):
         """
@@ -1111,14 +1111,14 @@ class CubeSortingDetector:
     def picked_up(self, obj, return_distance=False):
         """Check if cube has been picked up."""
         cube_idx = int(obj.replace('cube', ''))
-        z_target = self.env.table_offset[2] + 0.25
+        z_target = self.env.table_offset[2] + 0.15
         object_z_loc = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]][2]
-        z_dist = z_target - object_z_loc
+        z_dist = object_z_loc - z_target
         
         if return_distance:
             return z_dist
         else:
-            return bool(z_dist < 0.1)
+            return bool(z_dist > 0.1)
     
     def type_match(self, obj, platform):
         """Check if cube type matches platform."""
@@ -1176,7 +1176,18 @@ class CubeSortingDetector:
                 return True
             return False
         else:
-            return self.on_platform(obj1, obj2)
+            #return self.on_platform(obj1, obj2)
+            cube_idx = int(obj1.replace('cube', ''))
+            cube_pos = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]]
+            if obj2 == 'platform1':
+                platform_pos = self.env.platform1_pos
+            else:
+                platform_pos = self.env.platform2_pos
+            dist_xy = np.linalg.norm(cube_pos[:-1] - platform_pos[:-1])
+            dist_z = cube_pos[2] - platform_pos[2]
+            if dist_xy < 0.1 and dist_z > 0 and dist_z < 0.05:
+                return True
+            return False
 
     def clear(self, obj):
         """Check if no other cube is on top of the specified cube."""
@@ -1389,7 +1400,12 @@ class AssemblyLineSortingDetector:
             cube_pos = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]]
             bin_idx = int(obj2.replace('bin', ''))
             bin_pos = self.env.bin_positions[bin_idx]
-            return self.env._check_in_bin(cube_pos, bin_pos)
+            #return self.env._check_in_bin(cube_pos, bin_pos)
+            dist_xy = np.linalg.norm(cube_pos[:-1] - bin_pos[:-1])
+            dist_z = cube_pos[2] - bin_pos[2]
+            if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
+                return True
+            return False
         
     def clear(self, obj):
         """Check if no other cube is on top of the specified cube."""
@@ -1479,12 +1495,12 @@ class AssemblyLineSortingDetector:
         cube_idx = int(obj.replace('cube', ''))
         z_target = self.env.table_offset[2] + 0.15
         object_z_loc = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]][2]
-        z_dist = z_target - object_z_loc
+        z_dist = object_z_loc - z_target
         
         if return_distance:
             return z_dist
         else:
-            return bool(z_dist < 0.1)
+            return bool(z_dist > 0.1)
 
     def smaller(self, obj1, obj2):
         """Check if obj1 is smaller than obj2."""
@@ -1822,14 +1838,14 @@ class HeightStackingDetector:
         if cube_idx >= self.env.active_num_cubes:
             return self.max_distance if return_distance else False
             
-        z_target = self.env.table_offset[2] + 0.4
+        z_target = self.env.table_offset[2] + 0.15
         object_z_loc = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]][2]
-        z_dist = z_target - object_z_loc
+        z_dist = object_z_loc - z_target
         
         if return_distance:
             return z_dist
         else:
-            return bool(z_dist < 0.15)
+            return bool(z_dist > 0.1)
 
     def active(self, obj):
         """Check if cube is active in this episode."""
@@ -2147,13 +2163,13 @@ class PatternReplicationDetector:
         if "ref_cube" in obj:
             return False
         cube_idx = int(obj.replace('cube', ''))
-        z_target = self.env.table_offset[2] + 0.25
+        z_target = self.env.table_offset[2] + 0.15
         object_z_loc = self.env.sim.data.body_xpos[self.env.movable_cube_body_ids[cube_idx]][2]
-        z_dist = z_target - object_z_loc
+        z_dist = object_z_loc - z_target
         if return_distance:
             return z_dist
         else:
-            return bool(z_dist < 0.1)
+            return bool(z_dist > 0.1)
 
     def get_all_objects_pos(self):
         # Return a dict of all object positions
