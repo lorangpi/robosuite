@@ -1232,7 +1232,7 @@ class CubeSortingDetector:
             platform_pos = self.env.platform2_pos
         dist_xy = np.linalg.norm(cube_pos[:-1] - platform_pos[:-1])
         dist_z = cube_pos[2] - platform_pos[2]
-        if dist_xy < 0.1 and dist_z > 0 and dist_z < 0.05:
+        if dist_xy < 0.1 and dist_z > 0 and dist_z < 1:
             return True
         return False
 
