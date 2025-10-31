@@ -1172,7 +1172,7 @@ class CubeSortingDetector:
             other_pos = self.env.sim.data.body_xpos[other_body]
             dist_xy = np.linalg.norm(obj_pos[:-1] - other_pos[:-1])
             dist_z = obj_pos[2] - other_pos[2]
-            if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
+            if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.08:
                 return True
             return False
         else:
@@ -1221,6 +1221,20 @@ class CubeSortingDetector:
         for area in self.platforms:
             positions[area] = self.areas_pos[area]
         return positions
+    
+    def in_platform(self, obj, platform):
+        # Check if the obj is above the platform
+        cube_idx = int(obj.replace('cube', ''))
+        cube_pos = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]]
+        if platform == 'platform1':
+            platform_pos = self.env.platform1_pos
+        else:
+            platform_pos = self.env.platform2_pos
+        dist_xy = np.linalg.norm(cube_pos[:-1] - platform_pos[:-1])
+        dist_z = cube_pos[2] - platform_pos[2]
+        if dist_xy < 0.1 and dist_z > 0 and dist_z < 0.05:
+            return True
+        return False
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
         """Get all predicates for the environment state."""
@@ -1273,6 +1287,14 @@ class CubeSortingDetector:
                 if binary_to_float:
                     on_platform_value = float(on_platform_value)
                 groundings[f'on({obj},{platform})'] = on_platform_value
+
+        # In platform predicates
+        for obj in self.objects:
+            for platform in self.platforms:
+                on_platform_value = self.in_platform(obj, platform)
+                if binary_to_float:
+                    on_platform_value = float(on_platform_value)
+                groundings[f'in({obj},{platform})'] = on_platform_value
 
         # Grasped predicates
         for obj in self.objects:
