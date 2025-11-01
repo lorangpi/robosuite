@@ -2006,15 +2006,14 @@ class PatternReplicationDetector:
         self.num_cubes = env.num_cubes
         self.objects = [f'cube{i}' for i in range(self.num_cubes)]
         self.objects += [f'ref_cube{i}' for i in range(env.num_cubes)]
-        self.platforms = ['reference_platform', 'target_platform']
+        self.platforms = ['target_platform', 'table']
         self.grippers = ['gripper']
         self.max_distance = 10
         self.object_id = {f'cube{i}': env.movable_cubes[i].name+"_main" for i in range(self.num_cubes)}
         self.object_id.update({f'ref_cube{i}': env.reference_cubes[i].name+"_main" for i in range(env.num_cubes)})
-        self.object_id.update({'reference_platform': "platform1_main",
-                               'target_platform': "target_platform_main"})
-        self.areas_pos = {'reference_platform': np.array(self.env.reference_platform_pos),
-                          'target_platform': np.array(self.env.target_platform_pos)}
+        self.object_id.update({'target_platform': "target_platform_main"})
+        self.areas_pos = {'target_platform': np.array(self.env.target_platform_pos),
+                          'table': np.array(self.env.table_offset)}
 
     def select_object(self, obj_name):
         """Select movable cube object by name."""
@@ -2076,23 +2075,28 @@ class PatternReplicationDetector:
             return False
         else:
             if 'ref_cube' in obj1:
-                cube_pos = self.env.target_platform_pos + self.env.reference_pattern_positions[int(obj1.replace('ref_cube', ''))]
+                cube_pos = self.env.target_platform_pos + \
+                    self.env.reference_pattern_positions[int(obj1.replace('ref_cube', ''))]
             else:
                 cube_idx = int(obj1.replace('cube', ''))
                 cube_pos = self.env.sim.data.body_xpos[self.env.movable_cube_body_ids[cube_idx]]
-            if obj2 == 'reference_platform':
-                platform_pos = self.env.reference_platform_pos
-            else:
+            
+            if obj2 == 'target_platform':
                 platform_pos = self.env.target_platform_pos
+            elif obj2 == 'table':
+                platform_pos = self.env.table_offset
+            else:
+                return False
             return self.env._check_on_platform(cube_pos, platform_pos)
 
     def clear(self, obj):
         """Check if no other cube is on top of the specified cube."""
         if 'ref_cube' in obj:
-            # Reference cubes are static, check if any movable cube is on top
+            # Reference cubes are static, check if any cube (movable or reference) is on top
             ref_cube_idx = int(obj.replace('ref_cube', ''))
             obj_pos = self.env.target_platform_pos + self.env.reference_pattern_positions[ref_cube_idx]
             
+            # Check if any movable cube is on top
             for i in range(self.env.num_cubes):
                 other_body = self.env.movable_cube_body_ids[i]
                 other_pos = self.env.sim.data.body_xpos[other_body]
@@ -2100,6 +2104,15 @@ class PatternReplicationDetector:
                 dist_z = other_pos[2] - obj_pos[2]
                 if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
                     return False
+            
+            # Also check if any other reference cube is on top
+            for i in range(self.env.num_cubes):
+                if i != ref_cube_idx:
+                    other_pos = self.env.target_platform_pos + self.env.reference_pattern_positions[i]
+                    dist_xy = np.linalg.norm(obj_pos[:-1] - other_pos[:-1])
+                    dist_z = other_pos[2] - obj_pos[2]
+                    if dist_xy < 0.05 and dist_z > 0 and dist_z < 0.05:
+                        return False
             return True
         else:
             # Movable cube
@@ -2217,7 +2230,7 @@ class PatternReplicationDetector:
                 grasped_value = float(grasped_value)
             groundings[f'grasped({obj})'] = grasped_value
 
-        # On predicates
+        # On predicates (object on object)
         for i, obj1 in enumerate(self.objects):
             for j, obj2 in enumerate(self.objects):
                 if i != j:
@@ -2225,6 +2238,14 @@ class PatternReplicationDetector:
                     if binary_to_float:
                         on_value = float(on_value)
                     groundings[f'on({obj1},{obj2})'] = on_value
+        
+        # On predicates (object on platform)
+        for obj in self.objects:
+            for platform in self.platforms:
+                on_value = self.on(obj, platform)
+                if binary_to_float:
+                    on_value = float(on_value)
+                groundings[f'on({obj},{platform})'] = on_value
 
         # Clear predicates
         for obj in self.objects:
