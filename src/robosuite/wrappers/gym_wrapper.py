@@ -82,6 +82,10 @@ class GymWrapper(Wrapper, GoalEnv):
             if key in obs_dict:
                 if verbose:
                     print("adding key: {}".format(key))
+                    if key == "object-state":
+                        print("object-state array", obs_dict[key])
+                    elif key == "robot0_proprio-state":
+                        print("robot0_proprio-state array", obs_dict[key])
                 ob_lst.append(np.array(obs_dict[key]).flatten())
         return np.concatenate(ob_lst)
 
@@ -99,6 +103,15 @@ class GymWrapper(Wrapper, GoalEnv):
                 raise TypeError("Seed must be an integer type!")
         ob_dict = self.env.reset()
         return self._flatten_obs(ob_dict)
+
+    def seed(self, seed=None):
+        """
+        Extends env seed method to reset seed of environment
+
+        Args:
+            seed (int): seed to reset the environment with
+        """
+        np.random.seed(seed)
 
     def step(self, action):
         """

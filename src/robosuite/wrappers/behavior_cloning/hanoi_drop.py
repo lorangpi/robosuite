@@ -2,7 +2,7 @@ import copy
 import gymnasium as gym
 import robosuite as suite
 import numpy as np
-from detector import Robosuite_Hanoi_Detector
+from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
@@ -42,7 +42,10 @@ class DropWrapper(gym.Wrapper):
         high = np.inf * np.ones(self.obs_dim)
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
-        self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
+        if self.nulified_action_indexes != []:
+            self.action_space = gym.spaces.Box(low=self.env.action_space.low[:-len(nulified_action_indexes)], high=self.env.action_space.high[:-len(nulified_action_indexes)], dtype=np.float64)
+        else:
+            self.action_space = gym.spaces.Box(low=self.env.action_space.low, high=self.env.action_space.high, dtype=np.float64)
 
     def search_free_space(self, cube, locations, reset_state):
         drop_off = np.random.choice(locations)
@@ -222,7 +225,6 @@ class DropWrapper(gym.Wrapper):
         while not reset:
             trials = 0
             self.reset_state = self.sample_reset_state()
-            self.task = self.sample_task()
             self.env.reset_state = self.reset_state
             success = False
             while not success:
@@ -242,9 +244,11 @@ class DropWrapper(gym.Wrapper):
                 reset = success
                 if trials > 3:
                     break   
+        self.task = self.sample_task()
 
         self.sim.forward()
         # replace the goal object id with its array of x, y, z location
+        self.goal = self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]
         obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
         return obs, info
     
@@ -259,7 +263,7 @@ class DropWrapper(gym.Wrapper):
         except:
             obs, reward, terminated, info = self.env.step(action)
         state = self.detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
-        success = state[f"on({self.obj_to_pick},{self.place_to_drop})"]
+        success = state[f"on({self.obj_to_pick},{self.place_to_drop})"] and not state[f"grasped({self.obj_to_pick})"]
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success

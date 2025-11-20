@@ -22,6 +22,9 @@ from .xml_objects import (
     Cube2Object,
     Cube3Object,
     Cube4Object,
+    Cube5Object,
+    Cube6Object,
+    Cube7Object,
 )
 from .primitive import *
 from .composite import *
