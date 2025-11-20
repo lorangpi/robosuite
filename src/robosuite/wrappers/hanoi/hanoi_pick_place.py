@@ -396,17 +396,6 @@ class PickPlaceWrapper(gym.Wrapper):
             obs_copy = self.simple_obs(obs_copy)
             info["obs_base"] = obs_copy
             info["agentview"] = self.env.env._get_observations()["agentview_image"]
-            info["robot0_eye_in_hand"] = self.env.env._get_observations()["robot0_eye_in_hand_image"]
-            xyz_cube1 = self.env.sim.data.body_xpos[self.obj_mapping["cube1"]][:3]
-            xyz_cube2 = self.env.sim.data.body_xpos[self.obj_mapping["cube2"]][:3]
-            xyz_cube3 = self.env.sim.data.body_xpos[self.obj_mapping["cube3"]][:3]
-            if "cube4" in self.obj_mapping:
-                xyz_cube4 = self.env.sim.data.body_xpos[self.obj_mapping["cube4"]][:3]
-                info["cubes_obs"] = {"cube1": xyz_cube1, "cube2": xyz_cube2, "cube3": xyz_cube3, "cube4": xyz_cube4}
-            info["cubes_obs"] = {"cube1": xyz_cube1, "cube2": xyz_cube2, "cube3": xyz_cube3}
-            # Add ee position to the info
-            gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
-            info["ee_pos"] = gripper_pos
         else:
             obs_filter = copy.deepcopy(obs)
             obs = self.simple_obs(obs)

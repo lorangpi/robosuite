@@ -166,6 +166,10 @@ class Hanoi4x3(SingleArmEnv):
         renderer="mujoco",
         renderer_config=None,
         random_reset = False,
+        random_block_selection=False,
+        random_block_placement=False,
+        cube_init_pos_noise_std=0.0,
+        place_block_tower=0
     ):
         self.env_id = "Hanoi4x3"
         # settings for table top
@@ -358,15 +362,15 @@ class Hanoi4x3(SingleArmEnv):
 
         self.cube1 = BoxObject(
             name="cube1",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.02, 0.02, 0.02],
+            size_max=[0.02, 0.02, 0.02],
             rgba=[1, 0, 0, 1],
             material=text_number1,
         )
         self.cube2 = BoxObject(
             name="cube2",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.0225, 0.0225, 0.0225],
+            size_max=[0.0225, 0.0225, 0.0225],
             rgba=[0, 1, 0, 1],
             material=text_number2,
         )
@@ -379,8 +383,8 @@ class Hanoi4x3(SingleArmEnv):
         )
         self.cube4 = BoxObject(
             name="cube4",
-            size_min=[0.025, 0.025, 0.025],
-            size_max=[0.025, 0.025, 0.025],
+            size_min=[0.0275, 0.0275, 0.0275],
+            size_max=[0.0275, 0.0275, 0.0275],
             rgba=[0, 1, 0, 1],
             material=text_number4,
         )

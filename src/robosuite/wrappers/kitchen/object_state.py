@@ -54,8 +54,7 @@ class KitchenStateWrapper(gym.Wrapper):
             obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         return obs
 
-    def set_task(self, task):
-        obj_to_pick, place_to_drop = task
+    def set_task(self, obj_to_pick, place_to_drop):
         self.env.obj_to_pick = obj_to_pick
         self.env.place_to_drop = place_to_drop
         self.relative_obs = True

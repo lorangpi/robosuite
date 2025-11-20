@@ -2,6 +2,12 @@
 **/__pycache__/
 **/*.py[cod]
 *$py.class
+# existing lines from remote (if any)
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
 
 # C extensions
 *.so
@@ -115,6 +121,8 @@ mjkey.txt
 
 # private macros
 macros_private.py
+src/robosuite.egg-info/
+src/robosuite.egg-info/
 __pycache__/
 *.pyc
 *.pyo
