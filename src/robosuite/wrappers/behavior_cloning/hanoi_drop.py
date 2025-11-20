@@ -1,13 +1,14 @@
 import copy
 import gymnasium as gym
 import robosuite as suite
+import typing
 import numpy as np
 from robosuite.wrappers.behavior_cloning.detector import Robosuite_Hanoi_Detector
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
 class DropWrapper(gym.Wrapper):
-    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500):
+    def __init__(self, env, render_init=False, nulified_action_indexes=[], horizon=500, prev_action_policies:typing.List[Executor_RL]=[]):
         # Run super method
         super().__init__(env=env)
         self.env = env
@@ -16,6 +17,7 @@ class DropWrapper(gym.Wrapper):
         self.detector = Robosuite_Hanoi_Detector(self)
         self.nulified_action_indexes = nulified_action_indexes
         self.horizon = horizon
+        self.prev_action_policies = prev_action_policies
         self.step_count = 1
 
         # Define needed variables
@@ -32,7 +34,7 @@ class DropWrapper(gym.Wrapper):
         self.reset_state = self.sample_reset_state()
         self.task = self.sample_task()
         self.env.reset_state = self.reset_state
-        self.obj_mapping = {'cube1': self.cube1_body, 'cube2': self.cube2_body, 'cube3': self.cube3_body, 'peg1': self.peg1_body, 'peg2': self.peg2_body, 'peg3': self.peg3_body}
+        self.obj_name2body_mapping = {'cube1': self.cube1_body, 'cube2': self.cube2_body, 'cube3': self.cube3_body, 'peg1': self.peg1_body, 'peg2': self.peg2_body, 'peg3': self.peg3_body}
         self.goal_mapping = {'cube1': 0, 'cube2': 1, 'cube3': 2, 'peg1': 3, 'peg2': 4, 'peg3': 5}
         self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
 
@@ -104,7 +106,48 @@ class DropWrapper(gym.Wrapper):
         self.place_to_drop = place_to_drop
         print("Task: Pick {} and drop it on {}".format(self.obj_to_pick, self.place_to_drop))
         return f"on({cube_to_pick},{place_to_drop})"
+    
 
+    def reset_using_action_policies(self, obs):
+        """Resets the environment by executing the policies in `self.prev_action_policies` in sequence. Each policy corresponds to a high level action that needs to be completed.
+
+        Args:
+            obs (ObsType): an observation of the initial state
+        """
+        def get_action_step_goals():
+            """Finds the symbolic goal and the (x, y, z) position
+            goal for the current action step
+            Returns:
+                goal: the location of the object to be picked up or the drop location
+                symgoal: name of the object to be picked up or the name of the drop location 
+            """
+            if 'Pick' in prev_action_policy.id:
+                goal = self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.obj_to_pick]][:3]
+                symgoal = self.obj_to_pick
+            elif 'Drop' in prev_action_policy.id:
+                if 'peg' in self.place_to_drop:
+                    drop_loc = self.area_pos[self.place_to_drop]
+                else:
+                    drop_loc = self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.place_to_drop]][:3]
+                goal = drop_loc
+                if 'Reach' in prev_action_policy.id:
+                    symgoal = self.place_to_drop
+                else:
+                    symgoal = (self.obj_to_pick,self.place_to_drop)
+            return goal, symgoal
+            
+        if len(self.prev_action_policies) == 0: # use the default "manual" reset if there are no trained policies for previous actions
+            return self.drop_reset()
+        
+        for prev_action_policy in self.prev_action_policies:
+            goal, symgoal = get_action_step_goals()
+            obs, success = prev_action_policy.execute(self.env, obs[:self.env.observation_space.shape[0]], goal, symgoal, render=False)
+            if not success or not self.valid_state():
+                return False, obs
+
+        return True, obs
+    
+    
     def drop_reset(self):
         """
         Resets the environment to a state where the gripper is holding the object on top of the drop-off location
@@ -119,7 +162,7 @@ class DropWrapper(gym.Wrapper):
         #print("Moving gripper over object...")
         while not state['over(gripper,{})'.format(self.obj_to_pick)]:
             gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body])
-            object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]])
+            object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.obj_to_pick]])
             dist_xy_plan = object_pos[:2] - gripper_pos[:2]
             action = 5*np.concatenate([dist_xy_plan, [0, 0]])
             obs,_,_,_,_ = self.env.step(action)
@@ -145,7 +188,7 @@ class DropWrapper(gym.Wrapper):
         #print("Moving down gripper to grab level...")
         while not state['at_grab_level(gripper,{})'.format(self.obj_to_pick)]:
             gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.gripper_body])
-            object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.obj_to_pick]])
+            object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.obj_to_pick]])
             dist_z_axis = [object_pos[2] - gripper_pos[2]]
             action = 5*np.concatenate([[0, 0], dist_z_axis, [0]])
             obs,_,_,_,_ = self.env.step(action)
@@ -185,7 +228,7 @@ class DropWrapper(gym.Wrapper):
             if 'peg' in self.place_to_drop:
                 object_pos = self.area_pos[self.place_to_drop]
             else:
-                object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]])
+                object_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.place_to_drop]])
             dist_xy_plan = object_pos[:2] - gripper_pos[:2]
             action = 5*np.concatenate([dist_xy_plan, [0, 0]])
             obs,_,_,_,_ = self.env.step(action)
@@ -219,7 +262,26 @@ class DropWrapper(gym.Wrapper):
         return True
 
     def reset(self, seed=None):
-        # Reset the environment for the drop trask
+        # Reset the environment
+
+        def reset_env_until_valid_state():
+            """Reset the underlying env until we get a valid state. Should eventually be able to 
+            """
+            valid_state = False
+            trials = 0
+            while not valid_state:
+                #print("Trying to reset the environment...")
+                try:
+                    obs, info = self.env.reset()
+                except:
+                    obs = self.env.reset()
+                    info = {}
+                valid_state = self.valid_state()
+                trials += 1
+                if trials > 3:
+                    break 
+            return valid_state, obs, info
+          
         self.step_count = 1
         reset = False
         while not reset:
@@ -228,19 +290,12 @@ class DropWrapper(gym.Wrapper):
             self.env.reset_state = self.reset_state
             success = False
             while not success:
-                valid_state = False
-                while not valid_state:
-                    #print("Trying to reset the environment...")
-                    try:
-                        obs, info = self.env.reset()
-                    except:
-                        obs = self.env.reset()
-                        info = {}
-                    valid_state = self.valid_state()
-                    trials += 1
-                    if trials > 3:
-                        break   
-                success, obs = self.drop_reset()
+                _, obs, info = reset_env_until_valid_state() 
+                # 3 times out of 4, the env is reset to another location
+                if np.random.rand() < 0.25:
+                    success = True
+                else:
+                    success, obs = self.reset_using_action_policies(obs=obs)
                 reset = success
                 if trials > 3:
                     break   
@@ -267,7 +322,7 @@ class DropWrapper(gym.Wrapper):
         info['is_sucess'] = success
         truncated = truncated or self.env.done
         terminated = terminated or success
-        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_mapping[self.place_to_drop]][:3]))
+        obs = np.concatenate((obs, self.env.sim.data.body_xpos[self.obj_name2body_mapping[self.place_to_drop]][:3]))
         reward = 1 if success else 0
         self.step_count += 1
         if self.step_count > self.horizon:
