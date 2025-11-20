@@ -6,10 +6,11 @@ import cv2
 import os
 
 class AssembleVisionWrapper(gym.Wrapper):
-    def __init__(self, env, image_size=224):
+    def __init__(self, env, patch_task=False, image_size=224):
         # Run super method
         super().__init__(env=env)
         self.env = env
+        self.patch_task = patch_task
         # specify the observation space dtype for the vision wrapper
         self.image_size = image_size
         self.target_size = int(image_size / 8)
@@ -28,24 +29,31 @@ class AssembleVisionWrapper(gym.Wrapper):
             self.objects_image[k] = cv2.resize(self.objects_image[k], (self.target_size, self.target_size))
             #self.objects_image[k] = cv2.rotate(self.objects_image[k], cv2.ROTATE_90_CLOCKWISE)
 
+    def set_image(self, obs):
+        image = cv2.flip(obs.reshape(self.image_size, self.image_size, 3), 0)
+        # Change the image to BGR
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        return image
+
     def patch_task_image(self, obs):
         image = cv2.flip(obs.reshape(self.image_size, self.image_size, 3), 0)
         # Change the image to BGR
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         # Patch the object to pick image of cube1 on the top left corner
-        if self.env.obj_to_pick in self.objects_image:
-            image[0:self.target_size, 0:self.target_size] = self.objects_image[self.env.obj_to_pick]
+        if self.env.unwrapped.obj_to_pick in self.objects_image:
+            image[0:self.target_size, 0:self.target_size] = self.objects_image[self.env.unwrapped.obj_to_pick]
         # Patch the object to place image of cube2 on the top right corner
-        if self.env.place_to_drop is not None:
-            if self.env.place_to_drop in self.objects_image:
-                image[0:self.target_size, 224-self.target_size:224] = self.objects_image[self.env.place_to_drop]
+        if self.env.unwrapped.place_to_drop is not None:
+            if self.env.unwrapped.place_to_drop in self.objects_image:
+                image[0:self.target_size, 224-self.target_size:224] = self.objects_image[self.env.unwrapped.place_to_drop]
         # Flatten the image
         obs = image
         return obs
 
-    def set_task(self, obj_to_pick, place_to_drop):
-        self.env.obj_to_pick = obj_to_pick
-        self.env.place_to_drop = place_to_drop
+    def set_task(self, task):
+        obj_to_pick, place_to_drop = task
+        self.env.unwrapped.obj_to_pick = obj_to_pick
+        self.env.unwrapped.place_to_drop = place_to_drop
 
     def reset(self, seed=None):
         try:
@@ -53,7 +61,8 @@ class AssembleVisionWrapper(gym.Wrapper):
         except:
             obs = self.env.reset()
             info = {}
-        obs = self.patch_task_image(obs)
+        if self.patch_task:
+            obs = self.patch_task_image(obs)
         return obs, info
     
     def step(self, action):
@@ -62,5 +71,6 @@ class AssembleVisionWrapper(gym.Wrapper):
             obs, reward, terminated, truncated, info = self.env.step(action)
         except:
             obs, reward, terminated, info = self.env.step(action)
-        obs = self.patch_task_image(obs)
+        if self.patch_task:
+            obs = self.patch_task_image(obs)
         return obs, reward, terminated, truncated, info

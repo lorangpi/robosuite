@@ -16,7 +16,7 @@ class AssembleStateWrapper(gym.Wrapper):
         low = -high
         self.observation_space = gym.spaces.Box(low, high, dtype=np.float64)
         self.action_space = self.env.action_space
-        self.relative_obs = False
+        self.relative_obs = True
         
         # Object bodies
         self.gripper_body = self.env.sim.model.body_name2id('gripper0_eef')
@@ -44,9 +44,9 @@ class AssembleStateWrapper(gym.Wrapper):
         except KeyError:
             place_to_drop_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping['roundpeg']][:3])
         if self.relative_obs:
-            rel_obj_to_pick_pos = gripper_pos - obj_to_pick_pos
+            rel_obj_to_pick_pos = gripper_pos - obj_to_pick_pos 
             rel_place_to_drop_pos = gripper_pos - place_to_drop_pos
-            obs = np.concatenate([gripper_pos, rel_obj_to_pick_pos, rel_place_to_drop_pos, [aperture]])
+            obs = np.concatenate([gripper_pos, [aperture], rel_place_to_drop_pos*1000., rel_obj_to_pick_pos*1000.])
         else:
             obs = np.concatenate([gripper_pos, [aperture], place_to_drop_pos, obj_to_pick_pos])
         return obs

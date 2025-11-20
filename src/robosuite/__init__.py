@@ -4,12 +4,10 @@ from robosuite.environments.base import make
 from robosuite.environments.manipulation.lift import Lift
 from robosuite.environments.manipulation.stack import Stack
 from robosuite.environments.manipulation.hanoi import Hanoi
-from robosuite.environments.manipulation.hanoi4x3 import Hanoi4x3
-from robosuite.environments.manipulation.hanoi4x4 import Hanoi4x4
-from robosuite.environments.manipulation.hanoi5x4 import Hanoi5x4
-from robosuite.environments.manipulation.hanoi5x5 import Hanoi5x5
-from robosuite.environments.manipulation.hanoi7x5 import Hanoi7x5
-from robosuite.environments.manipulation.kitchen_modified import KitchenEnv
+from robosuite.environments.manipulation.cubesorting import CubeSorting
+from robosuite.environments.manipulation.assemblyline import AssemblyLineSorting
+from robosuite.environments.manipulation.heightstacking import HeightStacking
+from robosuite.environments.manipulation.patternreplication import PatternReplication
 from robosuite.environments.manipulation.nut_assembly import NutAssembly
 from robosuite.environments.manipulation.pick_place import PickPlace
 from robosuite.environments.manipulation.door import Door

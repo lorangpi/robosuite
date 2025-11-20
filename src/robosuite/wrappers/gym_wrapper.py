@@ -29,7 +29,7 @@ class GymWrapper(Wrapper, GoalEnv):
         AssertionError: [Object observations must be enabled if no keys]
     """
 
-    def __init__(self, env, keys=None, proprio_obs=True):
+    def __init__(self, env, keys=None, proprio_obs=True, flatten_obs=True):
         # Run super method
         super().__init__(env=env)
         # Create name for gym
@@ -55,6 +55,7 @@ class GymWrapper(Wrapper, GoalEnv):
 
         # Gym specific attributes
         self.env.spec = None
+        self.flatten_obs = flatten_obs
 
         # set up observation and action spaces
         obs = self.env.reset()
@@ -103,8 +104,18 @@ class GymWrapper(Wrapper, GoalEnv):
             else:
                 raise TypeError("Seed must be an integer type!")
         ob_dict = self.env.reset()
-        #print(ob_dict["agentview_image"].shape)
-        return self._flatten_obs(ob_dict)
+        if self.flatten_obs:
+            return self._flatten_obs(ob_dict)
+        return ob_dict
+
+    def seed(self, seed=None):
+        """
+        Extends env seed method to reset seed of environment
+
+        Args:
+            seed (int): seed to reset the environment with
+        """
+        np.random.seed(seed)
 
     def seed(self, seed=None):
         """
@@ -133,7 +144,9 @@ class GymWrapper(Wrapper, GoalEnv):
         """
         
         ob_dict, reward, terminated, info = self.env.step(action)
-        return self._flatten_obs(ob_dict), reward, terminated, self.done, info
+        if self.flatten_obs:
+            return self._flatten_obs(ob_dict), reward, terminated, self.done, info
+        return ob_dict, reward, terminated, self.done, info
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
