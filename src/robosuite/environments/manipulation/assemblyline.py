@@ -56,6 +56,9 @@ class AssemblyLineSorting(SingleArmEnv):
 
         num_bins (int): Number of sorting bins (default: 3)
 
+        cube_placement_noise (float): Uniform noise in meters to add to cube x and y positions
+            during spawn. Default is 0.025 (2.5cm). Set to 0.0 for deterministic placement.
+
         table_full_size (3-tuple): x, y, and z dimensions of the table.
 
         table_friction (3-tuple): the three mujoco friction parameters for
@@ -144,6 +147,7 @@ class AssemblyLineSorting(SingleArmEnv):
         initialization_noise="default",
         num_cubes=4,
         num_bins=3,
+        cube_placement_noise=0.0,
         table_full_size=(0.8, 0.8, 0.05),
         table_friction=(1.0, 5e-3, 1e-4),
         use_camera_obs=True,
@@ -177,12 +181,13 @@ class AssemblyLineSorting(SingleArmEnv):
         self.num_cubes = num_cubes
         self.num_bins = num_bins
         self.cube_size = 0.02
+        self.cube_placement_noise = cube_placement_noise
 
         # Define color categories (RGB colors)
         self.color_categories = [
-            ("red", [1, 0, 0, 1]),
+            ("red",   [1, 0, 0, 1]),
             ("green", [0, 1, 0, 1]),
-            ("blue", [0, 0, 1, 1]),
+            ("blue",  [0, 0, 1, 1]),
         ]
 
         # reward configuration
@@ -286,15 +291,20 @@ class AssemblyLineSorting(SingleArmEnv):
         Returns:
             bool: True if cube is in bin
         """
-        # Bin dimensions (12cm x 12cm, slightly smaller check area)
-        bin_half_size = 0.05
+        # Inner bin dimensions (accounting for wall thickness)
+        # Outer bin is 12cm x 12cm, inner is slightly smaller
+        inner_half_size = self.bin_size - self.wall_thickness
         
-        # Check if cube is within bin boundaries
-        x_in = abs(cube_pos[0] - bin_pos[0]) < bin_half_size
-        y_in = abs(cube_pos[1] - bin_pos[1]) < bin_half_size
-        z_above_bin = cube_pos[2] > self.table_offset[2] + 0.005  # Just above the bin platform
+        # Check if cube is within bin boundaries (inner area)
+        x_in = abs(cube_pos[0] - bin_pos[0]) < inner_half_size
+        y_in = abs(cube_pos[1] - bin_pos[1]) < inner_half_size
         
-        return x_in and y_in and z_above_bin
+        # Check if cube is above the bottom and below the wall top
+        bottom_z = bin_pos[2] - self.bottom_thickness / 2
+        top_z = bin_pos[2] - self.bottom_thickness / 2 + 0.075
+        z_in_range =(cube_pos[2] < top_z) # and (cube_pos[2] > bottom_z + 0.001)
+        
+        return x_in and y_in and z_in_range
 
     def _load_model(self):
         """
@@ -378,54 +388,100 @@ class AssemblyLineSorting(SingleArmEnv):
             self.cubes.append(cube)
             self.cube_colors.append(color_idx)
 
-        # Create sorting bins (colored platforms)
-        self.bins = []
+        # Create sorting bins with walls
+        self.bins = []  # List of bottom objects (for detector compatibility)
+        self.bin_walls_list = []  # List of lists: each bin has [bottom, wall1, wall2, wall3, wall4]
         self.bin_positions = []
+        
+        # Bin dimensions (store as instance variables)
+        self.bin_size = 0.06  # 12cm x 12cm bin (half-size)
+        self.wall_height = 0.05  # 5cm wall height
+        self.wall_thickness = 0.002  # 2mm wall thickness
+        self.bottom_thickness = 0.002  # 2mm bottom thickness
         
         # Bins are positioned in a row on the left side
         bin_y_start = -0.2
         bin_y_spacing = 0.2
-        bin_x = -0.1
+        bin_x = -0.15
         
         for i in range(self.num_bins):
-            # Create a flat box object to serve as a colored platform/bin
             color_name, rgba = self.color_categories[i]
-            bin_obj = BoxObject(
-                name=f"bin{i}",
-                size_min=[0.06, 0.06, 0.0001],  # Flat platform: 12cm x 12cm x 1cm
-                size_max=[0.06, 0.06, 0.0001],
-                rgba=rgba,  # Match the color category
-                obj_type="visual",  # Make it visual only
-                joints=None,  # No joints
-            )
-            self.bins.append(bin_obj)
+            bin_parts = []
             
             bin_y = bin_y_start + i * bin_y_spacing
-            self.bin_positions.append(np.array([bin_x, bin_y, self.table_offset[2] + 0.005]))
+            bin_z = self.table_offset[2] + 0.005 + self.bottom_thickness / 2
+            bin_pos = np.array([bin_x, bin_y, bin_z])
+            self.bin_positions.append(bin_pos)
+            
+            # Create bottom (store in both self.bins for detector and bin_parts for positioning)
+            bottom = BoxObject(
+                name=f"bin{i}",
+                size_min=[self.bin_size, self.bin_size, self.bottom_thickness],
+                size_max=[self.bin_size, self.bin_size, self.bottom_thickness],
+                rgba=rgba,
+                obj_type="all",  # Enable physics
+                joints=None,
+            )
+            self.bins.append(bottom)  # Store for detector (needs .name attribute)
+            bin_parts.append(bottom)
+            
+            # Create 4 walls
+            # Front wall (positive Y)
+            wall_front = BoxObject(
+                name=f"bin{i}_wall_front",
+                size_min=[self.bin_size, self.wall_thickness, self.wall_height],
+                size_max=[self.bin_size, self.wall_thickness, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            bin_parts.append(wall_front)
+            
+            # Back wall (negative Y)
+            wall_back = BoxObject(
+                name=f"bin{i}_wall_back",
+                size_min=[self.bin_size, self.wall_thickness, self.wall_height],
+                size_max=[self.bin_size, self.wall_thickness, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            bin_parts.append(wall_back)
+            
+            # Left wall (negative X)
+            wall_left = BoxObject(
+                name=f"bin{i}_wall_left",
+                size_min=[self.wall_thickness, self.bin_size, self.wall_height],
+                size_max=[self.wall_thickness, self.bin_size, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            bin_parts.append(wall_left)
+            
+            # Right wall (positive X)
+            wall_right = BoxObject(
+                name=f"bin{i}_wall_right",
+                size_min=[self.wall_thickness, self.bin_size, self.wall_height],
+                size_max=[self.wall_thickness, self.bin_size, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            bin_parts.append(wall_right)
+            
+            self.bin_walls_list.append(bin_parts)
 
         # Assembly line position (right side, where cubes spawn)
         self.assembly_line_x = 0.0
         self.assembly_line_y_start = -0.25
         self.assembly_line_y_end = 0.25
         
-        self.objects = self.cubes + self.bins
+        # Flatten bin parts into a single list for objects
+        self.bin_parts_flat = [part for bin_parts in self.bin_walls_list for part in bin_parts]
+        self.objects = self.cubes + self.bin_parts_flat
 
-        # Create placement initializers for bins
-        self.bin_placement_initializer = SequentialCompositeSampler(name="BinSampler")
-        
-        for i, (bin_obj, bin_pos) in enumerate(zip(self.bins, self.bin_positions)):
-            self.bin_placement_initializer.append_sampler(
-                UniformRandomSampler(
-                    name=f"Bin{i}Sampler",
-                    mujoco_objects=bin_obj,
-                    x_range=[bin_pos[0], bin_pos[0]],
-                    y_range=[bin_pos[1], bin_pos[1]],
-                    rotation=0,
-                    ensure_object_boundary_in_range=False,
-                    ensure_valid_placement=False,
-                    reference_pos=self.table_offset,
-                    z_offset=0.0,  # Place directly on table
-                ))
+        # Bin parts will be positioned manually in _reset_internal
 
         # Create placement initializers for cubes on assembly line
         self.cube_placement_initializers = []
@@ -480,12 +536,53 @@ class AssemblyLineSorting(SingleArmEnv):
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
 
-            # Sample from the placement initializer for bins
-            bin_placements = self.bin_placement_initializer.sample()
-            for obj_pos, obj_quat, obj in bin_placements.values():
-                body_id = self.sim.model.body_name2id(obj.root_body)
-                self.sim.model.body_pos[body_id] = obj_pos
-                self.sim.model.body_quat[body_id] = obj_quat
+            # Position all bin parts manually
+            for i, (bin_parts, bin_pos) in enumerate(zip(self.bin_walls_list, self.bin_positions)):
+                bottom, wall_front, wall_back, wall_left, wall_right = bin_parts
+                
+                # Bottom: centered at bin_pos
+                bottom_body_id = self.sim.model.body_name2id(bottom.root_body)
+                self.sim.model.body_pos[bottom_body_id] = bin_pos
+                self.sim.model.body_quat[bottom_body_id] = [1, 0, 0, 0]  # No rotation
+                
+                # Walls positioned relative to bin center
+                wall_z = bin_pos[2] + self.bottom_thickness / 2 + self.wall_height / 2
+                
+                # Front wall (positive Y): at bin_y + bin_size
+                wall_front_body_id = self.sim.model.body_name2id(wall_front.root_body)
+                self.sim.model.body_pos[wall_front_body_id] = [
+                    bin_pos[0],
+                    bin_pos[1] + self.bin_size + self.wall_thickness / 2,
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_front_body_id] = [1, 0, 0, 0]
+                
+                # Back wall (negative Y): at bin_y - bin_size
+                wall_back_body_id = self.sim.model.body_name2id(wall_back.root_body)
+                self.sim.model.body_pos[wall_back_body_id] = [
+                    bin_pos[0],
+                    bin_pos[1] - self.bin_size - self.wall_thickness / 2,
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_back_body_id] = [1, 0, 0, 0]
+                
+                # Left wall (negative X): at bin_x - bin_size
+                wall_left_body_id = self.sim.model.body_name2id(wall_left.root_body)
+                self.sim.model.body_pos[wall_left_body_id] = [
+                    bin_pos[0] - self.bin_size - self.wall_thickness / 2,
+                    bin_pos[1],
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_left_body_id] = [1, 0, 0, 0]
+                
+                # Right wall (positive X): at bin_x + bin_size
+                wall_right_body_id = self.sim.model.body_name2id(wall_right.root_body)
+                self.sim.model.body_pos[wall_right_body_id] = [
+                    bin_pos[0] + self.bin_size + self.wall_thickness / 2,
+                    bin_pos[1],
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_right_body_id] = [1, 0, 0, 0]
 
             # Randomly assign positions along assembly line for cubes
             y_positions = np.linspace(self.assembly_line_y_start, self.assembly_line_y_end, self.num_cubes)
@@ -503,8 +600,15 @@ class AssemblyLineSorting(SingleArmEnv):
                 sampler.y_range = [y_positions[i], y_positions[i]]
                 cube_placement = sampler.sample()
                 
-                # Set cube position
+                # Set cube position with noise
                 for obj_pos, obj_quat, obj in cube_placement.values():
+                    # Add uniform noise to x and y positions
+                    if self.cube_placement_noise > 0:
+                        noise_x = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                        noise_y = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                        obj_pos = np.array(obj_pos)
+                        obj_pos[0] += noise_x
+                        obj_pos[1] += noise_y
                     self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
 
     def _setup_observables(self):

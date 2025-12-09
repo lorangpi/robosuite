@@ -176,6 +176,7 @@ class Hanoi(SingleArmEnv):
         random_block_placement = False,
         cube_init_pos_noise_std=0.0,
         random_block_selection=False,
+        peg_xy_jitter: float = 0.0,
     ):
         self.env_id = "Hanoi"
         # settings for table top
@@ -197,6 +198,8 @@ class Hanoi(SingleArmEnv):
         self.placement_initializer = placement_initializer
 
         self.cube_init_pos_noise_std = cube_init_pos_noise_std
+    
+        self.peg_xy_jitter = peg_xy_jitter
 
         super().__init__(
             robots=robots,
@@ -404,8 +407,25 @@ class Hanoi(SingleArmEnv):
         self.visual_peg2 = PlateVisualObject(name="peg2")
         self.visual_peg3 = PlateVisualObject(name="peg3")
         self.pegs_xy_pos = [[0.1, -0.13], [0.1, 0.07], [0.1, 0.27]]
+
+        
+
+        # Base peg centers
         # Set pegs to be centered at xy pos (-0.1 x-axis, -0.05 y-axis shifted from the pegs_xy_pos)
-        self.pegs_xy_center = [[0, -0.18, 0.8], [0, 0.02, 0.8], [0, 0.22, 0.8]]
+        base_pegs_xy_center = [[0, -0.18, 0.8], [0, 0.02, 0.8], [0, 0.22, 0.8]]
+        peg_xy_jitter = getattr(self, 'peg_xy_jitter', 0.0)
+
+        if peg_xy_jitter > 0:
+            print(f"Peg XY jitter: {self.peg_xy_jitter}")
+            print(f"Base pegs XY center: {base_pegs_xy_center}")
+            self.pegs_xy_center = [
+                [base_pegs_xy_center[0][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[0][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[0][2]],
+                [base_pegs_xy_center[1][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[1][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[1][2]],
+                [base_pegs_xy_center[2][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[2][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[2][2]],
+            ]
+            print(f"Pegs XY center from hanoi.py: {self.pegs_xy_center}")
+        else:
+            self.pegs_xy_center = base_pegs_xy_center
         self.peg_radius = 0.0
         
         # Load ALL 4 cubes into the simulation to support different configurations
@@ -462,8 +482,8 @@ class Hanoi(SingleArmEnv):
             self.large_block_placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube3,
-                x_range=[self.pegs_xy_pos[0][0]-0.1, self.pegs_xy_pos[0][0]-0.1],
-                y_range=[self.pegs_xy_pos[0][1]-0.05, self.pegs_xy_pos[0][1]-0.05],
+                x_range=[self.pegs_xy_center[0][0], self.pegs_xy_center[0][0]],
+                y_range=[self.pegs_xy_center[0][1], self.pegs_xy_center[0][1]],
                 rotation=0,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
@@ -561,6 +581,16 @@ class Hanoi(SingleArmEnv):
         Resets simulation internal configurations.
         """
         super()._reset_internal()
+        
+        # Recalculate peg jitter positions for each episode
+        peg_xy_jitter = getattr(self, 'peg_xy_jitter', 0.0)
+        if peg_xy_jitter > 0:
+            base_pegs_xy_center = [[0, -0.18, 0.8], [0, 0.02, 0.8], [0, 0.22, 0.8]]
+            self.pegs_xy_center = [
+                [base_pegs_xy_center[0][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[0][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[0][2]],
+                [base_pegs_xy_center[1][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[1][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[1][2]],
+                [base_pegs_xy_center[2][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[2][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[2][2]],
+            ]
 
         self.obj_body_id = {
             "cube1": self.sim.model.body_name2id(self.cube1.root_body),

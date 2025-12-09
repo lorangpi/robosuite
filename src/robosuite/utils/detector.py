@@ -181,7 +181,7 @@ class PickPlaceDetector:
             if return_distance:
                 return dist_xy
             else:
-                return bool(dist_xy < 0.1)#bool(dist_xy < 0.05)
+                return bool(dist_xy < 0.005)#bool(dist_xy < 0.05)
         else:
             return None
 
@@ -367,15 +367,27 @@ class HanoiDetector:
         self.objects = ['cube1', 'cube2', 'cube3']
         self.object_id = {'cube1': 'cube1_main', 'cube2': 'cube2_main', 'cube3': 'cube3_main', 'peg1': 'peg1_main', 'peg2': 'peg2_main', 'peg3': 'peg3_main'}
         self.object_areas = ['peg1', 'peg2', 'peg3']
-        self.area_pos = {'peg1': self.env.pegs_xy_center[0], 'peg2': self.env.pegs_xy_center[1], 'peg3': self.env.pegs_xy_center[2]}
+        # Don't store references - will read dynamically from env to handle jittered positions after reset
+        print(f"Pegs XY center from detector: {self.env.pegs_xy_center}")
         self.grippers_areas = ['pick', 'drop', 'activate', 'lightswitch']
         self.grippers = ['gripper']
         self.area_size = self.env.peg_radius
         self.max_distance = 10 #max distance for the robotic arm in meters
 
+    def _get_area_pos(self, area):
+        """Get area position dynamically from env.pegs_xy_center to handle jittered positions after reset."""
+        if area == 'peg1':
+            return np.array(self.env.pegs_xy_center[0])
+        elif area == 'peg2':
+            return np.array(self.env.pegs_xy_center[1])
+        elif area == 'peg3':
+            return np.array(self.env.pegs_xy_center[2])
+        else:
+            raise ValueError(f"Unknown area: {area}")
+
     def at(self, obj, area, return_distance=False):
         obj_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj]]
-        dist = np.linalg.norm(obj_pos - self.area_pos[area])
+        dist = np.linalg.norm(obj_pos - self._get_area_pos(area))
         if return_distance:
             return dist
         else:
@@ -421,7 +433,7 @@ class HanoiDetector:
         if gripper == 'gripper':
             gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
             if obj in self.object_areas:
-                obj_pos = self.area_pos[obj]
+                obj_pos = self._get_area_pos(obj)
             else:
                 obj_pos = np.asarray(self.env.sim.data.body_xpos[obj_body])
             dist_xy = np.linalg.norm(gripper_pos[:-1] - obj_pos[:-1])
@@ -442,15 +454,19 @@ class HanoiDetector:
                 return bool(dist_z < 0.005)
     
     def on(self, obj1, obj2):
+        """Check if obj1 is on top of obj2 (either another cube or a peg)."""
         obj1_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj1]]
-        if obj2 in self.object_areas:
-            obj2_pos = self.area_pos[obj2]
-        else:
+        if obj2 in self.object_areas: # obj2 is a peg
+            obj2_pos = self._get_area_pos(obj2)
+            dist_x = np.linalg.norm(obj1_pos[0] - obj2_pos[0])
+            dist_y = np.linalg.norm(obj1_pos[1] - obj2_pos[1])
+            dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
+            return bool(dist_x < 0.03 and dist_y < 0.03 and obj1_pos[2] > obj2_pos[2]+0.001 and dist_z < 0.055)
+        else: # obj2 is another cube
             obj2_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj2]]
-        dist_xyz = np.linalg.norm(obj1_pos - obj2_pos)
-        dist_xy = np.linalg.norm(obj1_pos[:-1] - obj2_pos[:-1])
-        dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
-        return bool(dist_xy < 0.03 and obj1_pos[2] > obj2_pos[2]+0.001 and dist_z < 0.055)
+            dist_xy = np.linalg.norm(obj1_pos[:-1] - obj2_pos[:-1])
+            dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
+            return bool(dist_xy < 0.03 and obj1_pos[2] > obj2_pos[2]+0.001 and dist_z < 0.055)
     
     def clear(self, obj):
         for other_obj in self.objects:
@@ -495,7 +511,7 @@ class HanoiDetector:
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
         for area in self.object_areas:
-            positions[area] = self.area_pos[area]
+            positions[area] = self._get_area_pos(area)
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -1466,7 +1482,9 @@ class AssemblyLineSortingDetector:
         if return_distance:
             return dist_xy
         else:
-            return bool(dist_xy < 0.005)
+
+            threshold = 0.036 if obj in self.bins else 0.005
+            return bool(dist_xy < threshold)
 
     def at_grab_level(self, gripper, obj, return_distance=False):
         """Check if gripper is at same height as object."""
