@@ -55,6 +55,9 @@ class CubeSorting(SingleArmEnv):
 
         num_cubes (int): Number of cubes to spawn (default: 6)
 
+        cube_placement_noise (float): Uniform noise in meters to add to cube x and y positions
+            during spawn. Default is 0.025 (2.5cm). Set to 0.0 for deterministic placement.
+
         table_full_size (3-tuple): x, y, and z dimensions of the table.
 
         table_friction (3-tuple): the three mujoco friction parameters for
@@ -142,6 +145,7 @@ class CubeSorting(SingleArmEnv):
         gripper_types="default",
         initialization_noise="default",
         num_cubes=4,
+        cube_placement_noise=0.025,
         table_full_size=(0.8, 0.8, 0.05),
         table_friction=(1.0, 5e-3, 1e-4),
         use_camera_obs=True,
@@ -175,6 +179,7 @@ class CubeSorting(SingleArmEnv):
         self.num_cubes = num_cubes
         self.small_size = 0.018
         self.large_size = 0.022
+        self.cube_placement_noise = cube_placement_noise
 
         # reward configuration
         self.reward_scale = reward_scale
@@ -248,24 +253,29 @@ class CubeSorting(SingleArmEnv):
 
     def _check_on_platform(self, cube_pos, platform_pos):
         """
-        Check if a cube is on a platform.
+        Check if a cube is correctly placed in a platform (bin).
         
         Args:
             cube_pos: Position of the cube
             platform_pos: Position of the platform center
             
         Returns:
-            bool: True if cube is on platform
+            bool: True if cube is in platform
         """
-        # Platform dimensions (12cm x 12cm)
-        platform_half_size = 0.06
+        # Inner platform dimensions (accounting for wall thickness)
+        # Outer platform is 12cm x 12cm, inner is slightly smaller
+        inner_half_size = self.platform_size - self.wall_thickness
         
-        # Check if cube is within platform boundaries
-        x_on = abs(cube_pos[0] - platform_pos[0]) < platform_half_size
-        y_on = abs(cube_pos[1] - platform_pos[1]) < platform_half_size
-        z_on = cube_pos[2] > self.table_offset[2] #+ 0.005  # Just above the platform
-        z_on = z_on and cube_pos[2] < (self.table_offset[2] + 0.2)  # Below a certain height
-        return x_on and y_on and z_on
+        # Check if cube is within platform boundaries (inner area)
+        x_in = abs(cube_pos[0] - platform_pos[0]) < inner_half_size
+        y_in = abs(cube_pos[1] - platform_pos[1]) < inner_half_size
+        
+        # Check if cube is above the bottom and below the wall top
+        bottom_z = platform_pos[2] - self.bottom_thickness / 2
+        top_z = platform_pos[2] - self.bottom_thickness / 2 + 0.075
+        z_in_range = cube_pos[2] < top_z
+        
+        return x_in and y_in and z_in_range
 
     def _load_model(self):
         """
@@ -353,74 +363,109 @@ class CubeSorting(SingleArmEnv):
             self.cubes.append(cube)
             self.cube_sizes.append(size_type)
 
-        # Create two platforms with colors matching cube sizes
-        # Platform 1: Blue (for small/blue cubes)
-        # Platform 2: Red (for large/red cubes)
-        self.platform1 = BoxObject(
-            name="platform1",
-            size_min=[0.06, 0.06, 0.0001],  # Flat platform: 12cm x 12cm x 1cm
-            size_max=[0.06, 0.06, 0.0001],
-            rgba=[0, 0, 1, 1],  # Blue for small cubes
-            obj_type="visual",
-            joints=None,
-        )
-
-        self.platform2 = BoxObject(
-            name="platform2",
-            size_min=[0.06, 0.06, 0.0001],  # Flat platform: 12cm x 12cm x 1cm
-            size_max=[0.06, 0.06, 0.0001],
-            rgba=[1, 0, 0, 1],  # Red for large cubes
-            obj_type="visual",
-            joints=None,
-        )
+        # Create platforms (bins) with walls
+        self.platforms = []  # List of bottom objects (for detector compatibility)
+        self.platform_walls_list = []  # List of lists: each platform has [bottom, wall1, wall2, wall3, wall4]
+        
+        # Platform dimensions (store as instance variables)
+        self.platform_size = 0.06  # 12cm x 12cm platform (half-size)
+        self.wall_height = 0.05  # 7.5cm wall height
+        self.wall_thickness = 0.002  # 2mm wall thickness
+        self.bottom_thickness = 0.002  # 2mm bottom thickness
+        
+        # Platform colors
+        platform_colors = [
+            ([0, 0, 1, 1], "platform1"),  # Blue for small cubes
+            ([1, 0, 0, 1], "platform2"),  # Red for large cubes
+        ]
+        
+        for i, (rgba, platform_name) in enumerate(platform_colors):
+            platform_parts = []
+            
+            # Create bottom (store in both self.platforms for detector and platform_parts for positioning)
+            bottom = BoxObject(
+                name=platform_name,
+                size_min=[self.platform_size, self.platform_size, self.bottom_thickness],
+                size_max=[self.platform_size, self.platform_size, self.bottom_thickness],
+                rgba=rgba,
+                obj_type="all",  # Enable physics
+                joints=None,
+            )
+            self.platforms.append(bottom)  # Store for detector (needs .name attribute)
+            platform_parts.append(bottom)
+            
+            # Create 4 walls
+            # Front wall (positive Y)
+            wall_front = BoxObject(
+                name=f"{platform_name}_wall_front",
+                size_min=[self.platform_size, self.wall_thickness, self.wall_height],
+                size_max=[self.platform_size, self.wall_thickness, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            platform_parts.append(wall_front)
+            
+            # Back wall (negative Y)
+            wall_back = BoxObject(
+                name=f"{platform_name}_wall_back",
+                size_min=[self.platform_size, self.wall_thickness, self.wall_height],
+                size_max=[self.platform_size, self.wall_thickness, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            platform_parts.append(wall_back)
+            
+            # Left wall (negative X)
+            wall_left = BoxObject(
+                name=f"{platform_name}_wall_left",
+                size_min=[self.wall_thickness, self.platform_size, self.wall_height],
+                size_max=[self.wall_thickness, self.platform_size, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            platform_parts.append(wall_left)
+            
+            # Right wall (positive X)
+            wall_right = BoxObject(
+                name=f"{platform_name}_wall_right",
+                size_min=[self.wall_thickness, self.platform_size, self.wall_height],
+                size_max=[self.wall_thickness, self.platform_size, self.wall_height],
+                rgba=rgba,
+                obj_type="all",
+                joints=None,
+            )
+            platform_parts.append(wall_right)
+            
+            self.platform_walls_list.append(platform_parts)
+        
+        # Store platform1 and platform2 for backward compatibility
+        self.platform1 = self.platforms[0]
+        self.platform2 = self.platforms[1]
 
         # All objects on the same line (y-axis)
-        self.line_x = 0.05
+        self.line_x = -0.15
         
         # Platform positions (on the same line as cubes)
-        self.platform1_pos = np.array([self.line_x, -0.26, self.table_offset[2] + 0.005])
-        self.platform2_pos = np.array([self.line_x, 0.26, self.table_offset[2] + 0.005])
+        self.platform1_pos = np.array([self.line_x, -0.2, self.table_offset[2] + 0.005 + self.bottom_thickness / 2])
+        self.platform2_pos = np.array([self.line_x, 0.2, self.table_offset[2] + 0.005 + self.bottom_thickness / 2])
         
         # Cube placement range (between the two platforms)
-        self.line_y_start = -0.17
-        self.line_y_end = 0.17
+        self.line_y_start = -0.25
+        self.line_y_end = 0.25
         
-        self.objects = self.cubes + [self.platform1, self.platform2]
+        # Flatten platform parts into a single list for objects
+        self.platform_parts_flat = [part for platform_parts in self.platform_walls_list for part in platform_parts]
+        self.objects = self.cubes + self.platform_parts_flat
 
-        # Create placement initializers for platforms
-        self.platform_placement_initializer = SequentialCompositeSampler(name="PlatformSampler")
-        
-        # Platform 1 placement
-        self.platform_placement_initializer.append_sampler(
-            UniformRandomSampler(
-                name="Platform1Sampler",
-                mujoco_objects=self.platform1,
-                x_range=[self.platform1_pos[0], self.platform1_pos[0]],
-                y_range=[self.platform1_pos[1], self.platform1_pos[1]],
-                rotation=0,
-                ensure_object_boundary_in_range=False,
-                ensure_valid_placement=False,
-                reference_pos=self.table_offset,
-                z_offset=0.005,  # Slightly above table
-            ))
-        
-        # Platform 2 placement
-        self.platform_placement_initializer.append_sampler(
-            UniformRandomSampler(
-                name="Platform2Sampler",
-                mujoco_objects=self.platform2,
-                x_range=[self.platform2_pos[0], self.platform2_pos[0]],
-                y_range=[self.platform2_pos[1], self.platform2_pos[1]],
-                rotation=0,
-                ensure_object_boundary_in_range=False,
-                ensure_valid_placement=False,
-                reference_pos=self.table_offset,
-                z_offset=0.005,  # Slightly above table
-            ))
+        # Platform parts will be positioned manually in _reset_internal
 
         # Create placement initializers for cubes along the line
         self.cube_placement_initializers = []
         y_positions = np.linspace(self.line_y_start, self.line_y_end, self.num_cubes)
+        self.line_x = 0.0
         
         for i, cube in enumerate(self.cubes):
             sampler = UniformRandomSampler(
@@ -472,12 +517,54 @@ class CubeSorting(SingleArmEnv):
         # Reset all object positions using initializer sampler if we're not directly loading from an xml
         if not self.deterministic_reset:
 
-            # Sample from the placement initializer for platforms
-            platform_placements = self.platform_placement_initializer.sample()
-            for obj_pos, obj_quat, obj in platform_placements.values():
-                body_id = self.sim.model.body_name2id(obj.root_body)
-                self.sim.model.body_pos[body_id] = obj_pos
-                self.sim.model.body_quat[body_id] = obj_quat
+            # Position all platform parts manually
+            platform_positions = [self.platform1_pos, self.platform2_pos]
+            for i, (platform_parts, platform_pos) in enumerate(zip(self.platform_walls_list, platform_positions)):
+                bottom, wall_front, wall_back, wall_left, wall_right = platform_parts
+                
+                # Bottom: centered at platform_pos
+                bottom_body_id = self.sim.model.body_name2id(bottom.root_body)
+                self.sim.model.body_pos[bottom_body_id] = platform_pos
+                self.sim.model.body_quat[bottom_body_id] = [1, 0, 0, 0]  # No rotation
+                
+                # Walls positioned relative to platform center
+                wall_z = platform_pos[2] + self.bottom_thickness / 2 + self.wall_height / 2
+                
+                # Front wall (positive Y): at platform_y + platform_size
+                wall_front_body_id = self.sim.model.body_name2id(wall_front.root_body)
+                self.sim.model.body_pos[wall_front_body_id] = [
+                    platform_pos[0],
+                    platform_pos[1] + self.platform_size + self.wall_thickness / 2,
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_front_body_id] = [1, 0, 0, 0]
+                
+                # Back wall (negative Y): at platform_y - platform_size
+                wall_back_body_id = self.sim.model.body_name2id(wall_back.root_body)
+                self.sim.model.body_pos[wall_back_body_id] = [
+                    platform_pos[0],
+                    platform_pos[1] - self.platform_size - self.wall_thickness / 2,
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_back_body_id] = [1, 0, 0, 0]
+                
+                # Left wall (negative X): at platform_x - platform_size
+                wall_left_body_id = self.sim.model.body_name2id(wall_left.root_body)
+                self.sim.model.body_pos[wall_left_body_id] = [
+                    platform_pos[0] - self.platform_size - self.wall_thickness / 2,
+                    platform_pos[1],
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_left_body_id] = [1, 0, 0, 0]
+                
+                # Right wall (positive X): at platform_x + platform_size
+                wall_right_body_id = self.sim.model.body_name2id(wall_right.root_body)
+                self.sim.model.body_pos[wall_right_body_id] = [
+                    platform_pos[0] + self.platform_size + self.wall_thickness / 2,
+                    platform_pos[1],
+                    wall_z
+                ]
+                self.sim.model.body_quat[wall_right_body_id] = [1, 0, 0, 0]
 
             # Randomly shuffle the y-positions for cube placement
             y_positions = np.linspace(self.line_y_start, self.line_y_end, self.num_cubes)
@@ -489,8 +576,15 @@ class CubeSorting(SingleArmEnv):
                 sampler.y_range = [y_positions[i], y_positions[i]]
                 cube_placement = sampler.sample()
                 
-                # Set cube position
+                # Set cube position with noise
                 for obj_pos, obj_quat, obj in cube_placement.values():
+                    # Add uniform noise to x and y positions
+                    if self.cube_placement_noise > 0:
+                        noise_x = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                        noise_y = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                        obj_pos = np.array(obj_pos)
+                        obj_pos[0] += noise_x
+                        obj_pos[1] += noise_y
                     self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
 
     def _setup_observables(self):
