@@ -364,8 +364,13 @@ class PickPlaceDetector:
 class HanoiDetector:
     def __init__(self, env):
         self.env = env
-        self.objects = ['cube1', 'cube2', 'cube3']
-        self.object_id = {'cube1': 'cube1_main', 'cube2': 'cube2_main', 'cube3': 'cube3_main', 'peg1': 'peg1_main', 'peg2': 'peg2_main', 'peg3': 'peg3_main'}
+        # Check if this is Hanoi4x3 which has 4 cubes
+        if hasattr(env, 'env_id') and env.env_id == 'Hanoi4x3':
+            self.objects = ['cube1', 'cube2', 'cube3', 'cube4']
+            self.object_id = {'cube1': 'cube1_main', 'cube2': 'cube2_main', 'cube3': 'cube3_main', 'cube4': 'cube4_main', 'peg1': 'peg1_main', 'peg2': 'peg2_main', 'peg3': 'peg3_main'}
+        else:
+            self.objects = ['cube1', 'cube2', 'cube3']
+            self.object_id = {'cube1': 'cube1_main', 'cube2': 'cube2_main', 'cube3': 'cube3_main', 'peg1': 'peg1_main', 'peg2': 'peg2_main', 'peg3': 'peg3_main'}
         self.object_areas = ['peg1', 'peg2', 'peg3']
         # Don't store references - will read dynamically from env to handle jittered positions after reset
         print(f"Pegs XY center from detector: {self.env.pegs_xy_center}")
@@ -373,6 +378,8 @@ class HanoiDetector:
         self.grippers = ['gripper']
         self.area_size = self.env.peg_radius
         self.max_distance = 10 #max distance for the robotic arm in meters
+        # Get peg jitter amount to adjust thresholds dynamically
+        self.peg_xy_jitter = getattr(env, 'peg_xy_jitter', 0.0)
 
     def _get_area_pos(self, area):
         """Get area position dynamically from env.pegs_xy_center to handle jittered positions after reset."""
@@ -386,7 +393,12 @@ class HanoiDetector:
             raise ValueError(f"Unknown area: {area}")
 
     def at(self, obj, area, return_distance=False):
-        obj_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj]]
+        # Handle case where obj might not be in obj_body_id (e.g., cube4)
+        if obj in self.env.obj_body_id:
+            obj_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj]]
+        else:
+            obj_body = self.env.sim.model.body_name2id(f"{obj}_main")
+            obj_pos = self.env.sim.data.body_xpos[obj_body]
         dist = np.linalg.norm(obj_pos - self._get_area_pos(area))
         if return_distance:
             return dist
@@ -429,7 +441,19 @@ class HanoiDetector:
         return True
 
     def over(self, gripper, obj, return_distance=False):
-        obj_body = self.env.sim.model.body_name2id(self.object_id[obj])
+        # Handle case where obj might not be in object_id (e.g., cube4 in Hanoi4x3 if not updated)
+        if obj not in self.object_id:
+            # Try to get body id directly from env
+            if obj in self.env.obj_body_id:
+                obj_body = self.env.obj_body_id[obj]
+            else:
+                # Fallback: construct body name
+                body_name = f"{obj}_main" if obj.startswith('cube') else obj
+                obj_body = self.env.sim.model.body_name2id(body_name) if hasattr(self.env.sim.model, 'body_name2id') else None
+                if obj_body is None:
+                    return False if not return_distance else 999.0
+        else:
+            obj_body = self.env.sim.model.body_name2id(self.object_id[obj])
         if gripper == 'gripper':
             gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
             if obj in self.object_areas:
@@ -443,7 +467,16 @@ class HanoiDetector:
                 return bool(dist_xy < 0.004)#bool(dist_xy < 0.02)#bool(dist_xy < 0.004)#return bool(dist_xy < 0.004)
     
     def at_grab_level(self, gripper, obj, return_distance=False):
-        obj_body = self.env.sim.model.body_name2id(self.object_id[obj])
+        # Handle case where obj might not be in object_id
+        if obj not in self.object_id and obj in self.env.obj_body_id:
+            obj_body = self.env.obj_body_id[obj]
+        elif obj not in self.object_id:
+            body_name = f"{obj}_main" if obj.startswith('cube') else obj
+            obj_body = self.env.sim.model.body_name2id(body_name) if hasattr(self.env.sim.model, 'body_name2id') else None
+            if obj_body is None:
+                return False if not return_distance else 999.0
+        else:
+            obj_body = self.env.sim.model.body_name2id(self.object_id[obj])
         if gripper == 'gripper':
             gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
             obj_pos = np.asarray(self.env.sim.data.body_xpos[obj_body])
@@ -455,15 +488,30 @@ class HanoiDetector:
     
     def on(self, obj1, obj2):
         """Check if obj1 is on top of obj2 (either another cube or a peg)."""
-        obj1_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj1]]
+        # Get obj1 body id, handling cube4 if needed
+        if obj1 in self.env.obj_body_id:
+            obj1_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj1]]
+        else:
+            # Fallback for objects not in obj_body_id
+            obj1_body = self.env.sim.model.body_name2id(f"{obj1}_main")
+            obj1_pos = self.env.sim.data.body_xpos[obj1_body]
+        
         if obj2 in self.object_areas: # obj2 is a peg
             obj2_pos = self._get_area_pos(obj2)
             dist_x = np.linalg.norm(obj1_pos[0] - obj2_pos[0])
             dist_y = np.linalg.norm(obj1_pos[1] - obj2_pos[1])
             dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
-            return bool(dist_x < 0.03 and dist_y < 0.03 and obj1_pos[2] > obj2_pos[2]+0.001 and dist_z < 0.055)
+            # Increase threshold to account for peg jitter (0.03 base + jitter amount)
+            threshold = 0.03 + self.peg_xy_jitter
+            return bool(dist_x < threshold and dist_y < threshold and obj1_pos[2] > obj2_pos[2]+0.001 and dist_z < 0.055)
         else: # obj2 is another cube
-            obj2_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj2]]
+            # Get obj2 body id, handling cube4 if needed
+            if obj2 in self.env.obj_body_id:
+                obj2_pos = self.env.sim.data.body_xpos[self.env.obj_body_id[obj2]]
+            else:
+                # Fallback for objects not in obj_body_id
+                obj2_body = self.env.sim.model.body_name2id(f"{obj2}_main")
+                obj2_pos = self.env.sim.data.body_xpos[obj2_body]
             dist_xy = np.linalg.norm(obj1_pos[:-1] - obj2_pos[:-1])
             dist_z = np.linalg.norm(obj1_pos[2] - obj2_pos[2])
             return bool(dist_xy < 0.03 and obj1_pos[2] > obj2_pos[2]+0.001 and dist_z < 0.055)
@@ -494,8 +542,15 @@ class HanoiDetector:
     
     def picked_up(self, obj, return_distance=False):
         active_obj = self.select_object(obj)
+        if active_obj is None:
+            return False if not return_distance else 999.0
         z_target = self.env.table_offset[2] + 0.25
-        object_z_loc = self.env.sim.data.body_xpos[self.env.obj_body_id[active_obj.name]][2]
+        # Handle case where obj name might not be in obj_body_id
+        if active_obj.name in self.env.obj_body_id:
+            object_z_loc = self.env.sim.data.body_xpos[self.env.obj_body_id[active_obj.name]][2]
+        else:
+            obj_body = self.env.sim.model.body_name2id(f"{active_obj.name}_main")
+            object_z_loc = self.env.sim.data.body_xpos[obj_body][2]
         z_dist = z_target - object_z_loc
         if return_distance:
             return z_dist
@@ -506,7 +561,14 @@ class HanoiDetector:
         # Return a dict of all object positions
         positions = {}
         for obj in self.objects:
-            body_id = self.env.sim.model.body_name2id(self.object_id[obj])
+            # Handle case where obj might not be in object_id (e.g., cube4)
+            if obj in self.object_id:
+                body_id = self.env.sim.model.body_name2id(self.object_id[obj])
+            elif obj in self.env.obj_body_id:
+                body_id = self.env.obj_body_id[obj]
+            else:
+                body_name = f"{obj}_main" if obj.startswith('cube') else obj
+                body_id = self.env.sim.model.body_name2id(body_name)
             positions[obj] = np.asarray(self.env.sim.data.body_xpos[body_id])
         # Add eef position
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
