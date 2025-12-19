@@ -130,6 +130,9 @@ class HeightStacking(SingleArmEnv):
             [multiple / a single] segmentation(s) to use for all cameras. A list of list of str specifies per-camera
             segmentation setting(s) to use.
 
+        cube_placement_noise (float): Uniform noise in meters to add to cube x and y positions
+            during spawn. Default is 0.0. Set to 0.0 for deterministic placement (given the RNG state).
+
     Raises:
         AssertionError: [Invalid number of robots specified]
     """
@@ -141,8 +144,8 @@ class HeightStacking(SingleArmEnv):
         controller_configs=None,
         gripper_types="default",
         initialization_noise="default",
-        min_cubes=4,
-        max_cubes=4,
+        min_cubes=3,
+        max_cubes=3,
         table_full_size=(0.8, 0.8, 0.05),
         table_friction=(1.0, 5e-3, 1e-4),
         use_camera_obs=True,
@@ -166,6 +169,7 @@ class HeightStacking(SingleArmEnv):
         camera_segmentations=None,
         renderer="mujoco",
         renderer_config=None,
+        cube_placement_noise=0.0,
     ):
         # settings for table top
         self.table_full_size = table_full_size
@@ -176,6 +180,7 @@ class HeightStacking(SingleArmEnv):
         self.min_cubes = min_cubes
         self.max_cubes = max_cubes
         self.num_cubes = max_cubes  # Initialize with max, will be set during reset
+        self.cube_placement_noise = float(cube_placement_noise)
         
         # Define possible cube sizes (5 different sizes)
         self.cube_sizes_options = [0.017, 0.019, 0.021, 0.023, 0.025]
@@ -519,6 +524,13 @@ class HeightStacking(SingleArmEnv):
                 
                 # Set cube position
                 for obj_pos, obj_quat, obj in cube_placement.values():
+                    # Add uniform noise to x and y positions (mirrors AssemblyLineSorting)
+                    if self.cube_placement_noise > 0:
+                        noise_x = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                        noise_y = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                        obj_pos = np.array(obj_pos)
+                        obj_pos[0] += noise_x
+                        obj_pos[1] += noise_y
                     self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
             
             # Move inactive cubes far away (below table, invisible)

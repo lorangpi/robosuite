@@ -418,6 +418,9 @@ class HanoiDetector:
 
     def grasped(self, obj):
         active_obj = self.select_object(obj)
+        
+        if active_obj is None:
+            return False
 
         gripper = self.env.robots[0].gripper
         object_geoms = active_obj.contact_geoms
