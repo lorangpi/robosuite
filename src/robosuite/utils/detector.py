@@ -380,6 +380,9 @@ class HanoiDetector:
         self.max_distance = 10 #max distance for the robotic arm in meters
         # Get peg jitter amount to adjust thresholds dynamically
         self.peg_xy_jitter = getattr(env, 'peg_xy_jitter', 0.0)
+        self.area_pos = {'peg1': None, 'peg2': None, 'peg3': None}  # Will be set dynamically
+        for area in self.object_areas:
+            self.area_pos[area] = self._get_area_pos(area)
 
     def _get_area_pos(self, area):
         """Get area position dynamically from env.pegs_xy_center to handle jittered positions after reset."""
@@ -547,7 +550,7 @@ class HanoiDetector:
         active_obj = self.select_object(obj)
         if active_obj is None:
             return False if not return_distance else 999.0
-        z_target = self.env.table_offset[2] + 0.25
+        z_target = self.env.table_offset[2] + 0.35
         # Handle case where obj name might not be in obj_body_id
         if active_obj.name in self.env.obj_body_id:
             object_z_loc = self.env.sim.data.body_xpos[self.env.obj_body_id[active_obj.name]][2]
@@ -577,6 +580,7 @@ class HanoiDetector:
         positions['gripper'] = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body])
         for area in self.object_areas:
             positions[area] = self._get_area_pos(area)
+            self.area_pos[area] = positions[area]  # Update stored area_pos
         return positions
 
     def get_groundings(self, as_dict=False, binary_to_float=False, return_distance=False):
@@ -1598,7 +1602,7 @@ class AssemblyLineSortingDetector:
     def picked_up(self, obj, return_distance=False):
         """Check if cube has been picked up."""
         cube_idx = int(obj.replace('cube', ''))
-        z_target = self.env.table_offset[2] + 0.15
+        z_target = self.env.table_offset[2] + 0.25
         object_z_loc = self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]][2]
         z_dist = object_z_loc - z_target
         
