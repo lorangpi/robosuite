@@ -272,7 +272,7 @@ class CubeSorting(SingleArmEnv):
         
         # Check if cube is above the bottom and below the wall top
         bottom_z = platform_pos[2] - self.bottom_thickness / 2
-        top_z = platform_pos[2] - self.bottom_thickness / 2 + 0.075
+        top_z = platform_pos[2] - self.bottom_thickness / 2 + 0.125
         z_in_range = cube_pos[2] < top_z
         
         return x_in and y_in and z_in_range
