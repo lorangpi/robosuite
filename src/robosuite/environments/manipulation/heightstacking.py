@@ -144,8 +144,8 @@ class HeightStacking(SingleArmEnv):
         controller_configs=None,
         gripper_types="default",
         initialization_noise="default",
-        min_cubes=3,
-        max_cubes=3,
+        min_cubes=4,
+        max_cubes=4,
         table_full_size=(0.8, 0.8, 0.05),
         table_friction=(1.0, 5e-3, 1e-4),
         use_camera_obs=True,
@@ -170,6 +170,7 @@ class HeightStacking(SingleArmEnv):
         renderer="mujoco",
         renderer_config=None,
         cube_placement_noise=0.0,
+        deterministic_reset=True,
     ):
         # settings for table top
         self.table_full_size = table_full_size
@@ -237,6 +238,7 @@ class HeightStacking(SingleArmEnv):
             renderer=renderer,
             renderer_config=renderer_config,
         )
+        self.deterministic_reset = deterministic_reset
 
     def reward(self, action):
         """
@@ -492,55 +494,56 @@ class HeightStacking(SingleArmEnv):
         """
         super()._reset_internal()
         self.gripper_body = self.sim.model.body_name2id('gripper0_eef')
-        # Randomly choose number of cubes for this episode
-        self.active_num_cubes = np.random.randint(self.min_cubes, self.max_cubes + 1)
-        
-        # Randomly select which cube sizes to use (without replacement)
-        active_cube_indices = np.random.choice(self.max_cubes, self.active_num_cubes, replace=False)
-        active_cube_indices = sorted(active_cube_indices)  # Sort for consistency
-        
-        # Reset all object positions using initializer sampler if we're not directly loading from an xml
+        if self.deterministic_reset:
+            self.active_num_cubes = self.max_cubes
+            active_cube_indices = list(range(self.active_num_cubes))
+        else:
+            # Randomly choose number of cubes for this episode
+            self.active_num_cubes = np.random.randint(self.min_cubes, self.max_cubes + 1)
+            # Randomly select which cube sizes to use (without replacement)
+            active_cube_indices = np.random.choice(self.max_cubes, self.active_num_cubes, replace=False)
+            active_cube_indices = sorted(active_cube_indices)
+
+        # Sample from the placement initializer for platform
+        platform_placement = self.platform_placement_initializer.sample()
+        for obj_pos, obj_quat, obj in platform_placement.values():
+            body_id = self.sim.model.body_name2id(obj.root_body)
+            self.sim.model.body_pos[body_id] = obj_pos
+            self.sim.model.body_quat[body_id] = obj_quat
+
+        # Assign positions along line for active cubes
+        y_positions = np.linspace(self.line_y_start, self.line_y_end, self.active_num_cubes)
         if not self.deterministic_reset:
-
-            # Sample from the placement initializer for platform
-            platform_placement = self.platform_placement_initializer.sample()
-            for obj_pos, obj_quat, obj in platform_placement.values():
-                body_id = self.sim.model.body_name2id(obj.root_body)
-                self.sim.model.body_pos[body_id] = obj_pos
-                self.sim.model.body_quat[body_id] = obj_quat
-
-            # Randomly assign positions along line for active cubes
-            y_positions = np.linspace(self.line_y_start, self.line_y_end, self.active_num_cubes)
             np.random.shuffle(y_positions)
+        
+        # Place active cubes on the line
+        for idx, cube_idx in enumerate(active_cube_indices):
+            cube = self.cubes[cube_idx]
+            sampler = self.cube_placement_initializers[cube_idx]
             
-            # Place active cubes on the line
-            for idx, cube_idx in enumerate(active_cube_indices):
+            # Update sampler with assigned position
+            sampler.y_range = [y_positions[idx], y_positions[idx]]
+            cube_placement = sampler.sample()
+            
+            # Set cube position
+            for obj_pos, obj_quat, obj in cube_placement.values():
+                # Add uniform noise to x and y positions (mirrors AssemblyLineSorting)
+                if self.cube_placement_noise > 0:
+                    noise_x = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                    noise_y = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
+                    obj_pos = np.array(obj_pos)
+                    obj_pos[0] += noise_x
+                    obj_pos[1] += noise_y
+                self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
+        
+        # Move inactive cubes far away (below table, invisible)
+        for cube_idx in range(self.max_cubes):
+            if cube_idx not in active_cube_indices:
                 cube = self.cubes[cube_idx]
-                sampler = self.cube_placement_initializers[cube_idx]
-                
-                # Update sampler with assigned position
-                sampler.y_range = [y_positions[idx], y_positions[idx]]
-                cube_placement = sampler.sample()
-                
-                # Set cube position
-                for obj_pos, obj_quat, obj in cube_placement.values():
-                    # Add uniform noise to x and y positions (mirrors AssemblyLineSorting)
-                    if self.cube_placement_noise > 0:
-                        noise_x = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
-                        noise_y = np.random.uniform(-self.cube_placement_noise, self.cube_placement_noise)
-                        obj_pos = np.array(obj_pos)
-                        obj_pos[0] += noise_x
-                        obj_pos[1] += noise_y
-                    self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
-            
-            # Move inactive cubes far away (below table, invisible)
-            for cube_idx in range(self.max_cubes):
-                if cube_idx not in active_cube_indices:
-                    cube = self.cubes[cube_idx]
-                    # Move cube far below the table
-                    far_away_pos = np.array([0, 0, -10.0])
-                    far_away_quat = np.array([1, 0, 0, 0])
-                    self.sim.data.set_joint_qpos(cube.joints[0], np.concatenate([far_away_pos, far_away_quat]))
+                # Move cube far below the table
+                far_away_pos = np.array([0, 0, -10.0])
+                far_away_quat = np.array([1, 0, 0, 0])
+                self.sim.data.set_joint_qpos(cube.joints[0], np.concatenate([far_away_pos, far_away_quat]))
 
     def _setup_observables(self):
         """
