@@ -5,6 +5,7 @@ from robosuite.environments.manipulation.lift import Lift
 from robosuite.environments.manipulation.stack import Stack
 from robosuite.environments.manipulation.hanoi import Hanoi
 from robosuite.environments.manipulation.hanoi4x3 import Hanoi4x3
+from robosuite.environments.manipulation.hanoi4x4 import Hanoi4x4
 from robosuite.environments.manipulation.cubesorting import CubeSorting
 from robosuite.environments.manipulation.assemblyline import AssemblyLineSorting
 from robosuite.environments.manipulation.heightstacking import HeightStacking
