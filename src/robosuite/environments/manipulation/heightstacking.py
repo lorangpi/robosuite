@@ -169,7 +169,7 @@ class HeightStacking(SingleArmEnv):
         camera_segmentations=None,
         renderer="mujoco",
         renderer_config=None,
-        cube_placement_noise=0.0,
+        cube_placement_noise=0.025,
         deterministic_reset=True,
     ):
         # settings for table top
