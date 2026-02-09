@@ -375,8 +375,8 @@ class CubeSorting(SingleArmEnv):
         
         # Platform colors
         platform_colors = [
-            ([0, 0, 1, 1], "platform1"),  # Blue for small cubes
-            ([1, 0, 0, 1], "platform2"),  # Red for large cubes
+            ([1, 0, 0, 1], "platform1"),  # Blue for small cubes
+            ([0, 0, 1, 1], "platform2"),  # Red for large cubes
         ]
         
         for i, (rgba, platform_name) in enumerate(platform_colors):
