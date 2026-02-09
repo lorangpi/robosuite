@@ -363,9 +363,14 @@ class PickPlaceDetector:
 
 class HanoiDetector:
     def __init__(self, env):
-        self.env = env
-        # Check if this is Hanoi4x3 which has 4 cubes
-        if hasattr(env, 'env_id') and env.env_id == 'Hanoi4x3':
+        # Unwrap gym / robosuite wrappers to access the base env attributes
+        base_env = env.env if hasattr(env, "env") else env
+        self.env = base_env
+        # Use 4 cubes if this is Hanoi4x3 or if Hanoi is using random block selection
+        has_four_cubes = (
+            hasattr(base_env, 'env_id') and base_env.env_id == 'Hanoi4x3'
+        ) or getattr(base_env, 'random_block_selection', False)
+        if has_four_cubes:
             self.objects = ['cube1', 'cube2', 'cube3', 'cube4']
             self.object_id = {'cube1': 'cube1_main', 'cube2': 'cube2_main', 'cube3': 'cube3_main', 'cube4': 'cube4_main', 'peg1': 'peg1_main', 'peg2': 'peg2_main', 'peg3': 'peg3_main'}
         else:
@@ -534,15 +539,25 @@ class HanoiDetector:
             """
             Returns True if the gripper is open, False otherwise.
             """
-            gripper = self.env.robots[0].gripper
-            # Print gripper aperture
-            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
-            aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+            # KINOVA
+            # gripper = self.env.robots[0].gripper
+            # # Print gripper aperture
+            # left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
+            # right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+            # aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
+            # #print(f'Gripper aperture: {aperture}')
+            # if return_distance:
+            #     return aperture
+            # return bool(aperture > 0.13)
+        
+            # PANDA
+            j1 = self.env.sim.data.get_joint_qpos("gripper0_finger_joint1")
+            j2 = self.env.sim.data.get_joint_qpos("gripper0_finger_joint2")
+            aperture = np.linalg.norm(j1 - j2)
             #print(f'Gripper aperture: {aperture}')
             if return_distance:
                 return aperture
-            return bool(aperture > 0.13)
+            return bool(aperture > 0.076)
         else:
             return None
     
@@ -2428,4 +2443,3 @@ class PatternReplicationDetector:
             goal_list[i] = goal
         return goal_list
     
-

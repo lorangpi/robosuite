@@ -591,6 +591,10 @@ class Hanoi(SingleArmEnv):
                 [base_pegs_xy_center[1][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[1][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[1][2]],
                 [base_pegs_xy_center[2][0] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[2][1] + np.random.uniform(-peg_xy_jitter, peg_xy_jitter), base_pegs_xy_center[2][2]],
             ]
+            # Keep tower placement aligned to the jittered peg center
+            if hasattr(self, "large_block_placement_initializer"):
+                self.large_block_placement_initializer.x_range = [self.pegs_xy_center[0][0], self.pegs_xy_center[0][0]]
+                self.large_block_placement_initializer.y_range = [self.pegs_xy_center[0][1], self.pegs_xy_center[0][1]]
 
         self.obj_body_id = {
             "cube1": self.sim.model.body_name2id(self.cube1.root_body),
@@ -658,7 +662,7 @@ class Hanoi(SingleArmEnv):
             for peg_xy, cubes_on_peg in peg_groups.items():
                 if len(cubes_on_peg) > 1:
                     # Multiple cubes on this peg - apply identical XY noise (stacked)
-                    xy_noise = np.random.normal(0, self.cube_init_pos_noise_std, size=2)
+                    xy_noise = np.random.uniform(-self.cube_init_pos_noise_std, self.cube_init_pos_noise_std, size=2)
                     target_xy = np.array(peg_xy) + xy_noise
                     
                     for cube in cubes_on_peg:
@@ -674,7 +678,7 @@ class Hanoi(SingleArmEnv):
                     current_pos = np.array(self.sim.data.body_xpos[body_id])
                     current_quat = np.array(self.sim.data.body_xquat[body_id])
                     
-                    xy_noise = np.random.normal(0, self.cube_init_pos_noise_std, size=2)
+                    xy_noise = np.random.uniform(-self.cube_init_pos_noise_std, self.cube_init_pos_noise_std, size=2)
                     current_pos[:2] += xy_noise  # Add noise to existing XY
                     
                     self.sim.data.set_joint_qpos(cube.joints[0], np.concatenate([current_pos, current_quat]))
