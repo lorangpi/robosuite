@@ -30,8 +30,8 @@ class HanoiStateWrapper(gym.Wrapper):
     def get_obs(self):
         #print("Object to pick: ", self.env.obj_to_pick, " Place to drop: ", self.env.place_to_drop)
         gripper_pos = np.asarray(self.env.sim.data.body_xpos[self.env.gripper_body][:3])
-        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
         
         obj_to_pick_pos = np.asarray(self.env.sim.data.body_xpos[self.obj_mapping[self.env.obj_to_pick]][:3])

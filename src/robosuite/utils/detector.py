@@ -153,11 +153,11 @@ class PickPlaceDetector:
             """
             gripper = self.env.robots[0].gripper
             # Print gripper aperture
-            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
             #print(f'Gripper aperture: {aperture}')
-            return bool(aperture > 0.13)
+            return bool(aperture > 0.075)
         return None
 
     def door_locked(self):
@@ -470,7 +470,8 @@ class HanoiDetector:
             if return_distance:
                 return dist_xy
             else:
-                return bool(dist_xy < 0.004)#bool(dist_xy < 0.02)#bool(dist_xy < 0.004)#return bool(dist_xy < 0.004)
+                # 1cm XY gate — tolerant of small YOLO residual error
+                return bool(dist_xy < 0.01)
     
     def at_grab_level(self, gripper, obj, return_distance=False):
         # Handle case where obj might not be in object_id
@@ -536,13 +537,13 @@ class HanoiDetector:
             """
             gripper = self.env.robots[0].gripper
             # Print gripper aperture
-            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
             #print(f'Gripper aperture: {aperture}')
             if return_distance:
                 return aperture
-            return bool(aperture > 0.13)
+            return bool(aperture > 0.075)
         else:
             return None
     
@@ -730,12 +731,12 @@ class NutAssemblyDetector:
             """
             Returns True if the gripper is open, False otherwise.
             """
-            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
             if return_distance:
                 return aperture
-            return bool(aperture > 0.13)
+            return bool(aperture > 0.075)
         else:
             return None
     
@@ -861,8 +862,8 @@ class KitchenDetector:
         # 'Button1_base', 'Button1_switch', 'ServingRegionRed_main', 'ServingRegionRed_base', 'robot0_base', 'robot0_shoulder_link', 
         # 'robot0_HalfArm1_Link', 'robot0_HalfArm2_Link', 'robot0_forearm_link', 'robot0_SphericalWrist1_Link', 
         # 'robot0_SphericalWrist2_Link', 'robot0_Bracelet_Link', 'robot0_right_hand', 'gripper0_robotiq_85_adapter_link', 
-        # 'gripper0_eef', 'gripper0_left_outer_knuckle', 'gripper0_left_inner_finger', 'gripper0_left_inner_knuckle', 
-        # 'gripper0_right_outer_knuckle', 'gripper0_right_inner_finger', 'gripper0_right_inner_knuckle', 'mount0_base', 
+        # 'gripper0_eef', 'gripper0_left_outer_knuckle', 'gripper0_leftfinger', 'gripper0_left_inner_knuckle', 
+        # 'gripper0_right_outer_knuckle', 'gripper0_rightfinger', 'gripper0_right_inner_knuckle', 'mount0_base', 
         # 'mount0_controller_box', 'mount0_pedestal_feet', 'mount0_torso', 'mount0_pedestal', 'cube_bread_main', 'PotObject_root').
         self.env = env
         self.objects = ['stove', 'button', 'serving', 'pot', 'bread']
@@ -951,12 +952,12 @@ class KitchenDetector:
             """
             Returns True if the gripper is open, False otherwise.
             """
-            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
             if return_distance:
                 return aperture
-            return bool(aperture > 0.13)
+            return bool(aperture > 0.075)
         else:
             return None
     
@@ -1185,8 +1186,8 @@ class CubeSortingDetector:
 
     def open_gripper(self, return_distance=False):
         """Check if gripper is open."""
-        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
         
         if return_distance:
@@ -1591,8 +1592,8 @@ class AssemblyLineSortingDetector:
 
     def open_gripper(self, return_distance=False):
         """Check if gripper is open."""
-        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
         
         if return_distance:
@@ -1933,8 +1934,8 @@ class HeightStackingDetector:
 
     def open_gripper(self, return_distance=False):
         """Check if gripper is open."""
-        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
         
         if return_distance:
@@ -2273,8 +2274,8 @@ class PatternReplicationDetector:
     
     def open_gripper(self, return_distance=False):
         """Check if gripper is open."""
-        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_left_inner_finger")])
-        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_right_inner_finger")])
+        left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
+        right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
         aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
         if return_distance:
             return aperture
