@@ -534,16 +534,16 @@ class HanoiDetector:
         if gripper == 'gripper':
             """
             Returns True if the gripper is open, False otherwise.
+
+            Panda finger body separation tops out around ~0.08m; keep the
+            open gate below that with margin so reset_gripper cannot stall.
             """
-            gripper = self.env.robots[0].gripper
-            # Print gripper aperture
             left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
             right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
-            #print(f'Gripper aperture: {aperture}')
             if return_distance:
                 return aperture
-            return bool(aperture > 0.075)
+            return bool(aperture > 0.055)
         else:
             return None
     
