@@ -147,6 +147,7 @@ class AssemblyLineSorting(SingleArmEnv):
         initialization_noise="default",
         num_cubes=4,
         num_bins=3,
+        bin_colors=None,
         cube_placement_noise=0.0,
         table_full_size=(0.8, 0.8, 0.05),
         table_friction=(1.0, 5e-3, 1e-4),
@@ -184,11 +185,15 @@ class AssemblyLineSorting(SingleArmEnv):
         self.cube_placement_noise = cube_placement_noise
 
         # Define color categories (RGB colors)
-        self.color_categories = [
-            ("red",   [1, 0, 0, 1]),
-            ("green", [0, 1, 0, 1]),
-            ("blue",  [0, 0, 1, 1]),
-        ]
+        _palette = {
+            "red":   [1, 0, 0, 1],
+            "green": [0, 1, 0, 1],
+            "blue":  [0, 0, 1, 1],
+        }
+        # bin_colors fixes the left-to-right bin order, so one env serves both
+        # the basic sorting layout and the bin-locations-swapped variant.
+        _names = bin_colors if bin_colors is not None else ["red", "green", "blue"]
+        self.color_categories = [(n, _palette[n]) for n in _names]
 
         # reward configuration
         self.reward_scale = reward_scale

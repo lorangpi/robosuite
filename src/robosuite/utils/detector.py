@@ -470,7 +470,8 @@ class HanoiDetector:
             if return_distance:
                 return dist_xy
             else:
-                return bool(dist_xy < 0.004)#bool(dist_xy < 0.02)#bool(dist_xy < 0.004)#return bool(dist_xy < 0.004)
+                # 1cm XY gate — tolerant of small perception residual error
+                return bool(dist_xy < 0.01)
     
     def at_grab_level(self, gripper, obj, return_distance=False):
         # Handle case where obj might not be in object_id
@@ -1143,7 +1144,8 @@ class CubeSortingDetector:
         if return_distance:
             return dist_xy
         else:
-            return bool(dist_xy < 0.005)
+            # 1cm XY gate — tolerant of small perception residual error
+            return bool(dist_xy < 0.01)
 
     def at_grab_level(self, gripper, obj, return_distance=False):
         """Check if gripper is at same height as object."""
@@ -1552,7 +1554,8 @@ class AssemblyLineSortingDetector:
             return dist_xy
         else:
 
-            threshold = 0.036 if obj in self.bins else 0.005
+            # 1cm XY gate on cubes — tolerant of small perception residual error
+            threshold = 0.036 if obj in self.bins else 0.01
             return bool(dist_xy < threshold)
 
     def at_grab_level(self, gripper, obj, return_distance=False):
@@ -1879,13 +1882,14 @@ class HeightStackingDetector:
             if cube_idx >= self.env.active_num_cubes:
                 return self.max_distance if return_distance else False
             obj_pos = np.asarray(self.env.sim.data.body_xpos[self.env.cube_body_ids[cube_idx]])
-        
+
         dist_xy = np.linalg.norm(gripper_pos[:-1] - obj_pos[:-1])
-        
+
         if return_distance:
             return dist_xy
         else:
-            return bool(dist_xy < 0.002)
+            # 1cm XY gate — tolerant of small perception residual error
+            return bool(dist_xy < 0.01)
 
     def at_grab_level(self, gripper, obj, return_distance=False):
         """Check if gripper is at same height as object."""
@@ -2241,7 +2245,8 @@ class PatternReplicationDetector:
         if return_distance:
             return dist_xy
         else:
-            return bool(dist_xy < 0.002)
+            # 1cm XY gate — tolerant of small perception residual error
+            return bool(dist_xy < 0.01)
         
     def at_grab_level(self, gripper, obj, return_distance=False):
         """Check if gripper is at same height as movable cube."""
