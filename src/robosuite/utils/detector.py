@@ -470,7 +470,6 @@ class HanoiDetector:
             if return_distance:
                 return dist_xy
             else:
-                # 1cm XY gate — tolerant of small YOLO residual error
                 return bool(dist_xy < 0.01)
     
     def at_grab_level(self, gripper, obj, return_distance=False):
@@ -535,15 +534,31 @@ class HanoiDetector:
             """
             Returns True if the gripper is open, False otherwise.
 
-            Panda finger body separation tops out around ~0.08m; keep the
-            open gate below that with margin so reset_gripper cannot stall.
+            Supports PandaGripper (leftfinger/rightfinger) and Robotiq85 on
+            Kinova3 (left_inner_finger/right_inner_finger).
             """
-            left_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_leftfinger")])
-            right_finger_pos = np.asarray(self.env.sim.data.body_xpos[self.env.sim.model.body_name2id("gripper0_rightfinger")])
+            candidates = (
+                ("gripper0_leftfinger", "gripper0_rightfinger", 0.055),
+                ("gripper0_left_inner_finger", "gripper0_right_inner_finger", 0.13),
+            )
+            left_finger_pos = right_finger_pos = None
+            open_thresh = 0.055
+            for left, right, thresh in candidates:
+                try:
+                    left_finger_pos = np.asarray(
+                        self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(left)])
+                    right_finger_pos = np.asarray(
+                        self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(right)])
+                    open_thresh = thresh
+                    break
+                except ValueError:
+                    continue
+            if left_finger_pos is None:
+                raise ValueError("Could not resolve gripper finger bodies for open()")
             aperture = np.linalg.norm(left_finger_pos - right_finger_pos)
             if return_distance:
                 return aperture
-            return bool(aperture > 0.055)
+            return bool(aperture > open_thresh)
         else:
             return None
     
